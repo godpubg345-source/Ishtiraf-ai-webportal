@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}IshtirafAI - V3.0 Optical Scanner{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="hud-card text-center mb-6">
+        <h1 class="text-3xl font-bold text-cyan mb-2">🔮 V3.0 OPTICAL DECODER</h1>
+        <p class="text-dim">High-Capacity Color Barcode • Neural Audio • Ed25519 Verified</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Left: Scanner -->
+        <div class="hud-card">
+            <h2 class="text-lg font-bold text-cyan mb-4">SCAN JAB CODE</h2>
+
+            <!-- Camera Preview -->
+            <div class="relative mb-4">
+                <video id="camera-preview" class="w-full h-64 bg-black rounded border border-gray-700" autoplay
+                    playsinline></video>
+                <div id="scan-overlay" class="absolute inset-0 flex items-center justify-center">
+                    <div class="border-2 border-cyan p-16 rounded opacity-50"></div>
+                </div>
+            </div>
+
+            <div class="flex gap-2 mb-4">
+                <button id="startBtn" onclick="startCamera()" class="btn-sci-fi flex-1">
+                    <i class="fas fa-camera mr-2"></i> START CAMERA
+                </button>
+                <button id="captureBtn" onclick="captureAndDecode()" class="btn-sci-fi flex-1" disabled>
+                    <i class="fas fa-crosshairs mr-2"></i> CAPTURE
+                </button>
+            </div>
+
+            <!-- File Upload Alternative -->
+            <div class="text-center text-dim text-xs mb-2">OR UPLOAD IMAGE</div>
+            <input type="file" id="fileInput" accept="image/*" onchange="handleFileUpload(event)"
+                class="w-full bg-black border border-gray-700 rounded p-2 text-sm">
+        </div>
+
+        <!-- Right: Results -->
+        <div class="hud-card">
+            <h2 class="text-lg font-bold text-cyan mb-4">DECODED DATA</h2>
+
+            <div id="results" class="hidden">
+                <!-- Status -->
+                <div id="status-card" class="p-4 rounded mb-4 border">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-dim">DIAGNOSIS</span>
+                        <span id="diagnosis-status" class="text-2xl font-bold">-</span>
+                    </div>
+                </div>
+
+                <!-- Metadata Grid -->
+                <div class="grid grid-cols-2 gap-2 mb-4 text-sm">
+                    <div class="bg-black bg-opacity-50 p-3 rounded">
+                        <div class="text-dim text-xs">CONFIDENCE</div>
+                        <div id="meta-confidence" class="text-lg font-bold text-cyan">-</div>
+                    </div>
+                    <div class="bg-black bg-opacity-50 p-3 rounded">
+                        <div class="text-dim text-xs">RISK LEVEL</div>
+                        <div id="meta-risk" class="text-lg font-bold text-red">-</div>
+                    </div>
+                    <div class="bg-black bg-opacity-50 p-3 rounded">
+                        <div class="text-dim text-xs">ORGAN</div>
+                        <div id="meta-organ" class="text-lg font-bold">-</div>
+                    </div>
+                    <div class="bg-black bg-opacity-50 p-3 rounded">
+                        <div class="text-dim text-xs">TIMESTAMP</div>
+                        <div id="meta-time" class="text-sm">-</div>
+                    </div>
+                </div>
+
+                <!-- Security -->
+                <div id="security-card" class="border border-gray-700 p-3 rounded mb-4">
+                    <div class="text-dim text-xs mb-2">🔐 SECURITY STATUS</div>
+                    <div class="flex gap-4 text-sm">
+                        <span id="sec-signature" class="text-gray-500">SIGNATURE: -</span>
+                        <span id="sec-counter" class="text-gray-500">COUNTER: -</span>
+                        <span id="sec-replay" class="text-gray-500">REPLAY: -</span>
+                    </div>
+                </div>
+
+                <!-- Audio Playback (if available) -->
+                <div id="audio-section" class="hidden">
+                    <div class="text-dim text-xs mb-2">🎵 RECONSTRUCTED AUDIO</div>
+                    <audio id="audio-player" controls class="w-full mb-2"></audio>
+                    <div id="audio-stats" class="text-xs text-dim">Samples: - | Rate: 4000Hz</div>
+                </div>
+            </div>
+
+            <!-- Placeholder -->
+            <div id="placeholder" class="text-center py-12">
+                <div class="text-6xl mb-4 opacity-30">📱</div>
+                <div class="text-dim">Scan a V3.0 JAB Code to see results</div>
+            </div>
+
+            <!-- Error -->
+            <div id="error-box" class="hidden bg-red-900 bg-opacity-20 border border-red text-red p-4 rounded">
+                <span id="error-text">Error message</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden canvas for capture -->
+<canvas id="capture-canvas" class="hidden"></canvas>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/@nickel-libs/jsqr@1.0.0/dist/jsQR.js"></script>
+
+<script>
+    let videoStream = null;
+    let decodedAudio = null;
+
+    async function startCamera() {
+        try {
+            const video = document.getElementById('camera-preview');
+            videoStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            });
+            video.srcObject = videoStream;
+
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('captureBtn').disabled = false;
+
+        } catch (err) {
+            showError("Camera access denied: " + err.message);
+        }
+    }
+
+    function captureAndDecode() {
+        const video = document.getElementById('camera-preview');
+        const canvas = document.getElementById('capture-canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+
+        // For now, we'll use the image data
+        // In production, use a JAB code decoder library
+        canvas.toBlob(async (blob) => {
+            await decodeImage(blob);
+        }, 'image/png');
+    }
+
+    function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (file) {
+            decodeImage(file);
+        }
+    }
+
+    async function decodeImage(imageBlob) {
+        showLoading();
+
+        try {
+            // Read as base64
+            const reader = new FileReader();
+            reader.readAsDataURL(imageBlob);
+
+            reader.onload = async () => {
+                const base64 = reader.result.split(',')[1];
+
+                // For demo: Try to extract raw bytes assuming it's a multi-QR fallback
+                // In production, use jabcode decoder
+
+                // Call API
+                const response = await fetch('/api/decode_v3', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payload: base64 })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    showResults(data);
+                }
+            };
+
+        } catch (err) {
+            showError("Decode failed: " + err.message);
+        }
+    }
+
+    function showLoading() {
+        document.getElementById('placeholder').classList.add('hidden');
+        document.getElementById('results').classList.remove('hidden');
+        document.getElementById('error-box').classList.add('hidden');
+        document.getElementById('diagnosis-status').innerText = 'DECODING...';
+    }
+
+    function showError(msg) {
+        document.getElementById('placeholder').classList.add('hidden');
+        document.getElementById('results').classList.add('hidden');
+        document.getElementById('error-box').classList.remove('hidden');
+        document.getElementById('error-text').innerText = msg;
+    }
+
+    function showResults(data) {
+        document.getElementById('placeholder').classList.add('hidden');
+        document.getElementById('error-box').classList.add('hidden');
+        document.getElementById('results').classList.remove('hidden');
+
+        const meta = data.metadata || {};
+        const sec = data.security || {};
+
+        // Status
+        const status = meta.status || 'UNKNOWN';
+        const statusEl = document.getElementById('diagnosis-status');
+        statusEl.innerText = status;
+        statusEl.className = status === 'NORMAL' ? 'text-2xl font-bold text-green' : 'text-2xl font-bold text-red';
+
+        const card = document.getElementById('status-card');
+        card.className = status === 'NORMAL' ? 'p-4 rounded mb-4 border border-green' : 'p-4 rounded mb-4 border border-red';
+
+        // Metadata
+        document.getElementById('meta-confidence').innerText = (meta.confidence || 0) + '%';
+        document.getElementById('meta-risk').innerText = (meta.risk || 0) + '/10';
+        document.getElementById('meta-organ').innerText = meta.organ || 'N/A';
+        document.getElementById('meta-time').innerText = meta.timestamp || 'N/A';
+
+        // Security
+        document.getElementById('sec-signature').innerText = 'SIG: ' + (sec.signature_verified ? '✓' : '✗');
+        document.getElementById('sec-signature').className = sec.signature_verified ? 'text-green' : 'text-red';
+
+        document.getElementById('sec-counter').innerText = 'CTR: ' + (sec.counter || 0);
+
+        document.getElementById('sec-replay').innerText = sec.is_replay ? '⚠️ REPLAY!' : '✓ FRESH';
+        document.getElementById('sec-replay').className = sec.is_replay ? 'text-red font-bold' : 'text-green';
+
+        // Audio
+        if (data.audio && data.audio.length > 0) {
+            document.getElementById('audio-section').classList.remove('hidden');
+            document.getElementById('audio-stats').innerText = `Samples: ${data.audio_samples} | Rate: 4000Hz`;
+
+            decodedAudio = data.audio;
+
+            // Create audio blob and play
+            createAudioBlob(data.audio);
+        }
+    }
+
+    async function createAudioBlob(samples) {
+        // Create WAV from samples using the API
+        const response = await fetch('/api/playback_audio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audio: samples, sample_rate: 4000 })
+        });
+
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            document.getElementById('audio-player').src = url;
+        }
+    }
+</script>
+{% endblock %}

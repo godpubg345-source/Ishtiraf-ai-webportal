@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}{{ patient.name }} - Medical Record{% endblock %}
+
+{% block content %}
+<!-- Patient Header -->
+<div class="glass-panel p-8 mb-8 relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-3xl opacity-10 -mr-16 -mt-16"></div>
+
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center relative z-10">
+        <div class="flex items-center gap-6">
+            <div
+                class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg">
+                {{ patient.name[:2].upper() }}
+            </div>
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">{{ patient.name }}</h1>
+                <div class="flex gap-4 mt-2 text-sm text-gray-500 font-medium">
+                    <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full">ID: #{{ patient.id }}</span>
+                    <span class="flex items-center gap-1"><i class="fas fa-venus-mars"></i> {{ patient.gender }}</span>
+                    <span class="flex items-center gap-1"><i class="fas fa-birthday-cake"></i> {{ patient.age }}
+                        Years</span>
+                    <span class="flex items-center gap-1"><i class="fas fa-phone"></i> {{ patient.contact }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 md:mt-0 flex gap-3">
+            <button
+                class="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-50 transition shadow-sm">
+                <i class="fas fa-qrcode mr-2"></i> Generate QR
+            </button>
+            <button
+                class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition shadow-lg btn-primary">
+                <i class="fas fa-stethoscope mr-2"></i> New Scan
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+    <!-- Left: Timeline/History -->
+    <div class="lg:col-span-8 space-y-8">
+        <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <i class="fas fa-history text-blue-500"></i> Clinical History
+        </h2>
+
+        {% for diag in patient.diagnoses|reverse %}
+        <div class="glass-panel p-0 overflow-hidden transition-all hover:shadow-xl group">
+            <!-- Diagnosis Header -->
+            <div
+                class="p-6 border-b border-gray-100 flex justify-between items-start bg-gradient-to-r from-white to-gray-50">
+                <div class="flex gap-4">
+                    <div
+                        class="p-3 rounded-lg {{ 'bg-red-100 text-red-600' if 'ABNORMAL' in diag.diagnosis_result else 'bg-green-100 text-green-600' }}">
+                        <i
+                            class="fas {{ 'fa-heart-broken' if 'ABNORMAL' in diag.diagnosis_result else 'fa-heart' }} text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800">{{ diag.diagnosis_result }}</h3>
+                        <p class="text-sm text-gray-500">{{ diag.timestamp.strftime('%d %B %Y, %I:%M %p') if
+                            diag.timestamp else 'N/A' }} • {{
+                            diag.organ_mode }} Scan</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span
+                        class="block text-3xl font-bold {{ 'text-red-500' if diag.risk_score > 5 else 'text-blue-500' }}">
+                        {{ diag.risk_score }}<span class="text-sm text-gray-400">/10</span>
+                    </span>
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wide">Risk Score</span>
+                </div>
+            </div>
+
+            <!-- AI Explanation Section (XAI) -->
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-white">
+
+                <!-- 1. AI Reasoning -->
+                <div>
+                    <h4 class="text-sm font-bold text-gray-400 uppercase mb-3 tracking-wider">🤖 AI Interpretation</h4>
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <p class="text-gray-700 leading-relaxed text-sm">
+                            <i class="fas fa-info-circle text-blue-500 mr-1"></i>
+                            The AI model analyzed <strong>{{ diag.path_used.split('/')[-1] }}</strong> and detected
+                            patterns consistent with
+                            <strong
+                                class="{{ 'text-red-600' if 'ABNORMAL' in diag.diagnosis_result else 'text-green-600' }}">
+                                {{ diag.diagnosis_result.split(':')[-1] }}
+                            </strong>.
+                        </p>
+                        <div class="mt-3 flex gap-2">
+                            <span class="text-xs bg-white border border-gray-200 px-2 py-1 rounded text-gray-600">
+                                Confidence: <strong>{{ diag.confidence }}%</strong>
+                            </span>
+                            <span class="text-xs bg-white border border-gray-200 px-2 py-1 rounded text-gray-600">
+                                Signal Quality: <strong>High (RMS {{ "%.2f"|format(diag.rms_value) }})</strong>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Clinical Correlation -->
+                <div>
+                    <h4 class="text-sm font-bold text-gray-400 uppercase mb-3 tracking-wider">🩺 Clinical Action</h4>
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 h-full">
+                        <p class="text-gray-800 font-medium italic">"{{ diag.recommendation }}"</p>
+                        {% if 'ABNORMAL' in diag.diagnosis_result %}
+                        <ul class="mt-3 space-y-1 text-sm text-gray-600">
+                            <li>• Auscultate {{ diag.organ_mode }} area again.</li>
+                            <li>• Check for associated symptoms.</li>
+                        </ul>
+                        {% else %}
+                        <p class="mt-2 text-sm text-green-600 font-medium">Routine follow-up only.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="bg-gray-50 p-4 flex justify-between items-center border-t border-gray-100">
+                <div class="text-xs text-gray-400 font-mono">ID: {{ diag.diagnosis_id }}</div>
+                <div class="flex gap-2">
+                    <button class="text-gray-500 hover:text-blue-600 text-sm font-semibold px-3 py-1 transition">
+                        <i class="fas fa-share-alt mr-1"></i> Share
+                    </button>
+                    <a href="{{ url_for('export_pdf', diagnosis_id=diag.id) }}"
+                        class="text-blue-600 hover:text-blue-700 text-sm font-bold px-3 py-1 bg-blue-50 rounded-lg transition">
+                        <i class="fas fa-file-pdf mr-1"></i> View Report
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Right: Sidebar Stats -->
+    <div class="lg:col-span-4 space-y-6">
+        <!-- Vitals Card -->
+        <div class="glass-panel p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Latest Vitals (AI Est.)</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="p-4 bg-gray-50 rounded-xl text-center">
+                    <div class="text-gray-400 text-xs uppercase font-bold">Heart Rate</div>
+                    <div class="text-2xl font-bold text-gray-800 mt-1">72 <span
+                            class="text-xs font-normal text-gray-400">bpm</span></div>
+                </div>
+                <div class="p-4 bg-gray-50 rounded-xl text-center">
+                    <div class="text-gray-400 text-xs uppercase font-bold">Respiration</div>
+                    <div class="text-2xl font-bold text-gray-800 mt-1">16 <span
+                            class="text-xs font-normal text-gray-400">/min</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Risk Trend -->
+        <div class="glass-panel p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Risk Trend Analysis</h3>
+            <div class="h-40 bg-gray-50 rounded-xl flex items-end justify-between p-4 pb-0">
+                <!-- Simulated Bars -->
+                {% for i in range(5) %}
+                <div class="w-1/6 bg-blue-200 rounded-t-lg mx-1 relative group"
+                    style="height: {{ range(20, 80) | random }}%;">
+                    <div
+                        class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition">
+                        Scan #{{ i+1 }}
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="w-1/6 bg-blue-500 rounded-t-lg mx-1 relative animate-pulse"
+                    style="height: {{ avg_risk * 10 }}%;"></div>
+            </div>
+            <p class="text-xs text-center text-gray-400 mt-3">Last 6 Clinical Encounters</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

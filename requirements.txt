@@ -1,0 +1,33 @@
+flask
+flask-sqlalchemy
+flask-cors
+cryptography
+qrcode[pil]
+pillow
+reportlab
+flask-login
+pyjwt
+flask-mail
+pyotp
+bcrypt
+flask-bcrypt
+python-dotenv
+gunicorn
+numpy
+scipy
+tensorflow
+
+# V3.0 JAB Code Support
+cbor2
+pynacl
+msgpack
+opencv-python-headless
+
+# Enterprise Features
+flask-socketio
+pandas
+openpyxl
+redis
+sendgrid
+twilio
+

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - IshtirafAI</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-900 text-white h-screen flex items-center justify-center">
+    <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md">
+        <h2 class="text-3xl font-bold text-center text-blue-500 mb-6">Create Account</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="bg-red-500 text-white p-3 rounded mb-4 text-center">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('auth.register') }}" class="space-y-4">
+            <div>
+                <label class="block text-gray-400 mb-1">Full Name</label>
+                <input type="text" name="name" required
+                    class="w-full p-3 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-gray-400 mb-1">Email Address</label>
+                <input type="email" name="email" required
+                    class="w-full p-3 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-gray-400 mb-1">Password</label>
+                <input type="password" name="password" required
+                    class="w-full p-3 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 outline-none">
+            </div>
+
+            <button type="submit"
+                class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded transition">
+                Register
+            </button>
+        </form>
+
+        <p class="mt-4 text-center text-gray-400">
+            Already have an account? <a href="{{ url_for('auth.login') }}"
+                class="text-blue-400 hover:underline">Login</a>
+        </p>
+    </div>
+</body>
+
+</html>

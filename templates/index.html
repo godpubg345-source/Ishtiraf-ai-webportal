@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IshtirafAI Portal - Scan</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center">
+
+    <div class="w-full max-w-md p-6 bg-gray-800 rounded-xl shadow-2xl">
+        <h1 class="text-3xl font-bold text-center mb-6 text-blue-400">IshtirafAI Portal</h1>
+        
+        <!-- Scanner Section -->
+        <div id="scanner-container" class="mb-6">
+            <div id="reader" width="600px"></div>
+        </div>
+
+        <!-- Result Form (Hidden initially) -->
+        <div id="result-form" class="hidden">
+            <h2 class="text-xl font-semibold mb-4 text-green-400">Diagnosis Decrypted</h2>
+            
+            <div class="bg-gray-700 p-4 rounded mb-4 text-sm">
+                <p><span class="font-bold">Result:</span> <span id="diag-result">--</span></p>
+                <p><span class="font-bold">Confidence:</span> <span id="diag-conf">--</span>%</p>
+                <p><span class="font-bold">Risk Score:</span> <span id="diag-risk">--</span>/10</p>
+            </div>
+
+            <h3 class="text-lg font-semibold mb-2">Patient Details</h3>
+            <form id="patient-form" class="space-y-3">
+                <input type="text" id="p-name" placeholder="Full Name" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 outline-none" required>
+                <div class="flex space-x-2">
+                    <input type="number" id="p-age" placeholder="Age" class="w-1/2 p-2 rounded bg-gray-700 border border-gray-600" required>
+                    <select id="p-gender" class="w-1/2 p-2 rounded bg-gray-700 border border-gray-600">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <input type="text" id="p-contact" placeholder="Contact (Optional)" class="w-full p-2 rounded bg-gray-700 border border-gray-600">
+                
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded transition">
+                    Save Record
+                </button>
+            </form>
+        </div>
+        
+        <div class="mt-4 text-center">
+            <a href="/dashboard" class="text-gray-400 hover:text-white underline">View Patient History</a>
+        </div>
+    </div>
+
+    <script>
+        let diagnosisData = null;
+
+        function onScanSuccess(decodedText, decodedResult) {
+            console.log(`Code matched = ${decodedText}`, decodedResult);
+            html5QrcodeScanner.clear();
+            
+            // Send to backend for decryption
+            fetch('/api/decrypt_qr', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payload: decodedText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    diagnosisData = data.data;
+                    showForm(diagnosisData);
+                } else {
+                    alert("Decryption Failed: " + data.message);
+                    location.reload();
+                }
+            })
+            .catch(err => console.error(err));
+        }
+
+        function showForm(data) {
+            document.getElementById('scanner-container').classList.add('hidden');
+            document.getElementById('result-form').classList.remove('hidden');
+            
+            document.getElementById('diag-result').innerText = data.diagnosis;
+            document.getElementById('diag-conf').innerText = data.confidence;
+            document.getElementById('diag-risk').innerText = data.risk_score;
+            
+            // Color coding
+            const resEl = document.getElementById('diag-result');
+            if (data.diagnosis.includes("NORMAL")) resEl.className = "text-green-400 font-bold";
+            else if (data.diagnosis.includes("WARNING")) resEl.className = "text-yellow-400 font-bold";
+            else resEl.className = "text-red-500 font-bold";
+        }
+
+        document.getElementById('patient-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!diagnosisData) return;
+
+            const patientData = {
+                name: document.getElementById('p-name').value,
+                age: document.getElementById('p-age').value,
+                gender: document.getElementById('p-gender').value,
+                contact: document.getElementById('p-contact').value
+            };
+
+            fetch('/api/save_patient', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ patient: patientData, diagnosis: diagnosisData })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert("Saved Successfully!");
+                    window.location.href = '/dashboard';
+                } else {
+                    alert("Error: " + data.message);
+                }
+            });
+        });
+
+        let html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader",
+            { fps: 10, qrbox: {width: 250, height: 250} },
+            /* verbose= */ false);
+        html5QrcodeScanner.render(onScanSuccess);
+    </script>
+</body>
+</html>

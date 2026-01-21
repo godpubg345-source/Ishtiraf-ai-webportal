@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}IshtirafAI - Command Center{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[80vh]">
+    <!-- Left Panel: Vitals & Mode -->
+    <div class="col-span-1 flex flex-col gap-6">
+        <div class="hud-card flex-1 flex flex-col justify-center items-center text-center">
+            <h3 class="text-dim text-sm mb-2">SYSTEM MODE</h3>
+            <h1 class="text-4xl font-bold text-cyan glitch-text">AUTO-SCAN</h1>
+            <p class="text-dim text-xs mt-2">v2.1.0 // ONLINE</p>
+        </div>
+
+        <div class="hud-card flex-1">
+            <h3 class="text-dim text-sm mb-4">SENSOR STATUS</h3>
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-sm">MICROPHONE</span>
+                <span class="text-green text-xs font-bold">ACTIVE</span>
+            </div>
+            <div class="w-full bg-gray-800 h-1 mt-1">
+                <div class="bg-green h-1" style="width: 100%;"></div>
+            </div>
+
+            <div class="flex justify-between items-center mt-6 mb-2">
+                <span class="text-sm">AI ENGINE</span>
+                <span class="text-cyan text-xs font-bold">READY</span>
+            </div>
+            <div class="w-full bg-gray-800 h-1 mt-1">
+                <div class="bg-cyan h-1" style="width: 100%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Center Panel: Visualization -->
+    <div class="col-span-1 lg:col-span-2 flex flex-col gap-6">
+        <div class="hud-card flex-1 flex flex-col relative">
+            <div class="absolute top-4 left-4 text-xs text-dim">WAVEFORM VISUALIZATION // REAL-TIME</div>
+
+            <!-- Canvas for Waveform -->
+            <canvas id="vis-canvas"
+                class="w-full flex-1 mb-4 border border-gray-800 bg-black bg-opacity-50 rounded"></canvas>
+
+            <div id="status-display" class="hidden text-center py-4 border-t border-gray-800">
+                <div class="text-2xl font-bold mb-1" id="result-status">ANALYZING...</div>
+                <div class="text-sm text-dim" id="result-detail">PLEASE WAIT</div>
+            </div>
+
+            <div class="flex gap-4 mt-4">
+                <button id="recordBtn" class="btn-sci-fi flex-1 py-4 text-xl" onclick="toggleRecording()">
+                    <i class="fas fa-microchip mr-2"></i> INITIATE SCAN
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden result modal or overlay could go here -->
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let isRecording = false;
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioContext;
+    let analyser;
+    let canvas = document.getElementById('vis-canvas');
+    let ctx = canvas.getContext('2d');
+    let animationId;
+
+    // Resize canvas
+    function resizeCanvas() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight - 100; // Adjust for controls
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    async function toggleRecording() {
+        const btn = document.getElementById('recordBtn');
+        const statusDiv = document.getElementById('status-display');
+        const resultStatus = document.getElementById('result-status');
+        const resultDetail = document.getElementById('result-detail');
+
+        if (!isRecording) {
+            // Start Recording
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                // Audio Context for Visualizer
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+                source.connect(analyser);
+                drawVisualizer();
+
+                mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+
+                mediaRecorder.onstop = async () => {
+                    cancelAnimationFrame(animationId);
+                    stream.getTracks().forEach(track => track.stop());
+
+                    // Show Processing
+                    statusDiv.classList.remove('hidden');
+                    resultStatus.className = 'text-2xl font-bold text-yellow-500 animate-pulse';
+                    resultStatus.innerText = "PROCESSING DATA...";
+                    resultDetail.innerText = "SENDING TO NEURAL NETWORK";
+
+                    // Convert to Base64
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' }); // simplistic
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = async () => {
+                        const base64Audio = reader.result.split(',')[1];
+
+                        // Send to API
+                        const response = await fetch('/api/analyze-audio', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ audio: base64Audio })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.status === 'processed' && data.data) {
+                            const ai = data.data;
+                            // Update UI
+                            resultStatus.className = ai.status === 'NORMAL' ? 'text-4xl font-bold text-green' : 'text-4xl font-bold text-red';
+                            resultStatus.innerText = ai.status;
+                            resultDetail.innerText = `${ai.diagnosis} (Conf: ${ai.confidence}%)`;
+
+                            if (ai.status !== 'NORMAL') {
+                                btn.classList.add('danger');
+                            }
+                        } else {
+                            resultStatus.innerText = "ERROR";
+                            resultDetail.innerText = data.error || "Analysis Failed";
+                        }
+                    };
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                btn.innerText = "⏹ STOP SCAN";
+                btn.classList.add('pulse-critical');
+                statusDiv.classList.add('hidden');
+
+            } catch (err) {
+                console.error("Mic Error:", err);
+                alert("Microphone access required.");
+            }
+        } else {
+            // Stop Recording
+            mediaRecorder.stop();
+            isRecording = false;
+            btn.innerText = "▶ INITIATE SCAN";
+            btn.classList.remove('pulse-critical');
+        }
+    }
+
+    function drawVisualizer() {
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const draw = () => {
+            animationId = requestAnimationFrame(draw);
+            analyser.getByteTimeDomainData(dataArray);
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Fade effect
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#00F3FF';
+            ctx.beginPath();
+
+            const sliceWidth = canvas.width * 1.0 / bufferLength;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * canvas.height / 2;
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+
+                x += sliceWidth;
+            }
+
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+        };
+
+        draw();
+    }
+</script>
+{% endblock %}

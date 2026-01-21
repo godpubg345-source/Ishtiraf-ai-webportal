@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}IshtirafAI - Weekly Report{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-2xl font-bold mb-2">
+                <i class="fas fa-chart-bar mr-2 text-cyan-500"></i>Weekly Report
+            </h1>
+            <p class="text-gray-500">
+                {{ report.period.start }} to {{ report.period.end }}
+            </p>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="window.print()" class="btn-sci-fi text-sm px-4 py-2">
+                <i class="fas fa-print mr-2"></i>Print
+            </button>
+            <a href="{{ url_for('reports.api_weekly_report') }}" class="btn-sci-fi text-sm px-4 py-2">
+                <i class="fas fa-download mr-2"></i>Export JSON
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="dashboard-grid mb-8">
+        <div class="col-span-3">
+            <div class="stat-card info">
+                <div class="icon info"><i class="fas fa-stethoscope"></i></div>
+                <div class="value">{{ report.summary.total_scans }}</div>
+                <div class="label">Total Scans</div>
+            </div>
+        </div>
+        <div class="col-span-3">
+            <div class="stat-card success">
+                <div class="icon success"><i class="fas fa-check-circle"></i></div>
+                <div class="value">{{ report.summary.normal_count }}</div>
+                <div class="label">Normal</div>
+            </div>
+        </div>
+        <div class="col-span-3">
+            <div class="stat-card warning">
+                <div class="icon warning"><i class="fas fa-exclamation-circle"></i></div>
+                <div class="value">{{ report.summary.abnormal_count }}</div>
+                <div class="label">Abnormal</div>
+            </div>
+        </div>
+        <div class="col-span-3">
+            <div class="stat-card danger">
+                <div class="icon danger"><i class="fas fa-heart-pulse"></i></div>
+                <div class="value">{{ report.summary.critical_count }}</div>
+                <div class="label">Critical</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="dashboard-grid mb-8">
+        <!-- Daily Trend Chart -->
+        <div class="col-span-8">
+            <div class="chart-card">
+                <h3><i class="fas fa-chart-line mr-2"></i>Daily Breakdown</h3>
+                <div class="chart-container">
+                    <canvas id="dailyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Diagnoses -->
+        <div class="col-span-4">
+            <div class="chart-card">
+                <h3><i class="fas fa-list-ol mr-2"></i>Top Diagnoses</h3>
+                <div class="space-y-4 mt-4">
+                    {% for diagnosis, count in report.top_diagnoses %}
+                    <div class="metric-bar">
+                        <span class="metric-label text-xs truncate" title="{{ diagnosis }}">{{ diagnosis[:20]
+                            }}...</span>
+                        <div class="metric-progress">
+                            <div class="bar cyan"
+                                style="width: {{ (count / report.summary.total_scans * 100) if report.summary.total_scans else 0 }}%;">
+                            </div>
+                        </div>
+                        <span class="metric-value text-cyan-500">{{ count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Metrics -->
+    <div class="dashboard-grid">
+        <div class="col-span-6">
+            <div class="chart-card">
+                <h3><i class="fas fa-tachometer-alt mr-2"></i>Performance Metrics</h3>
+                <div class="grid grid-cols-2 gap-4 mt-4">
+                    <div class="p-4 bg-gray-50 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-cyan-500">{{ report.summary.avg_confidence }}%</div>
+                        <div class="text-sm text-gray-500">Avg Confidence</div>
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-purple-500">{{ report.summary.avg_risk_score }}</div>
+                        <div class="text-sm text-gray-500">Avg Risk Score</div>
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-green-500">{{ report.summary.new_patients }}</div>
+                        <div class="text-sm text-gray-500">New Patients</div>
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-orange-500">1.2s</div>
+                        <div class="text-sm text-gray-500">Avg Response</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-span-6">
+            <div class="chart-card">
+                <h3><i class="fas fa-pie-chart mr-2"></i>Outcome Distribution</h3>
+                <div class="chart-container" style="height: 200px;">
+                    <canvas id="outcomeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-8 text-center text-sm text-gray-400">
+        Report generated at {{ report.generated_at }} • IshtirafAI Medical Diagnostic System
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Daily breakdown chart
+        const dailyData = {{ report.daily_breakdown | tojson
+    }};
+    const labels = Object.keys(dailyData).sort();
+    const normalData = labels.map(d => dailyData[d]?.normal || 0);
+    const abnormalData = labels.map(d => dailyData[d]?.abnormal || 0);
+
+    createLineChart('dailyChart', labels, [
+        {
+            label: 'Normal',
+            data: normalData,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            fill: true,
+            tension: 0.4
+        },
+        {
+            label: 'Abnormal',
+            data: abnormalData,
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            fill: true,
+            tension: 0.4
+        }
+    ]);
+
+    // Outcome doughnut
+    createDoughnutChart('outcomeChart',
+        ['Normal', 'Abnormal', 'Critical'],
+        [{{ report.summary.normal_count }}, {{ report.summary.abnormal_count - report.summary.critical_count }}, {{ report.summary.critical_count }}],
+        ['#10b981', '#f97316', '#ef4444']
+    );
+});
+</script>
+{% endblock %}

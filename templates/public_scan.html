@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic Report - IshtirafAI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern_light.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hud-grid {
+            background-image: linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen font-sans">
+
+    <!-- Top Nav -->
+    <nav class="bg-white shadow-sm border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl font-bold gradient-text">IshtirafAI</span>
+                    <span class="ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800">PRO</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-500"><i class="far fa-clock mr-1"></i> {{ diagnosis.timestamp
+                        }}</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Header Banner -->
+        <div
+            class="bg-white rounded-2xl shadow-lg p-6 mb-6 border-l-4 {{ 'border-green-500' if diagnosis.status == 'NORMAL' else 'border-red-500' }}">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-1">{{ diagnosis.diagnosis }}</h1>
+                    <div class="flex items-center gap-3 mt-2">
+                        <span
+                            class="px-3 py-1 rounded-full text-sm font-semibold {{ 'bg-green-100 text-green-700' if diagnosis.status == 'NORMAL' else 'bg-red-100 text-red-700' }}">
+                            {{ diagnosis.status }}
+                        </span>
+                        {% if diagnosis.organ %}
+                        <span class="px-3 py-1 rounded-full text-sm font-semibold bg-blue-50 text-blue-700">
+                            <i class="fas fa-lungs-virus mr-1"></i> {{ diagnosis.organ }}
+                        </span>
+                        {% endif %}
+                        <span class="text-gray-500 text-sm flex items-center">
+                            <i class="fas fa-microchip mr-1"></i> Device: {{ diagnosis.device_id }}
+                        </span>
+                    </div>
+                </div>
+                <div class="mt-4 md:mt-0 text-right">
+                    <div class="text-sm text-gray-500 uppercase tracking-wide font-semibold">Risk Score</div>
+                    <div
+                        class="text-4xl font-bold {{ 'text-green-500' if diagnosis.risk_score < 4 else 'text-red-500' }}">
+                        {{ diagnosis.risk_score }}<span class="text-xl text-gray-400">/10</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- LEFT COLUMN: Detailed Findings -->
+            <!-- LEFT COLUMN: AI & Acoustic Analysis -->
+            <div class="lg:col-span-2 space-y-6">
+
+                <!-- 1. Generative AI Assessment -->
+                <div
+                    class="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-1 border border-indigo-100 shadow-sm relative overflow-hidden">
+                    <div
+                        class="absolute top-0 right-0 w-32 h-32 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob">
+                    </div>
+
+                    <div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 relative z-10">
+                        <h3 class="font-bold text-indigo-900 text-lg mb-3 flex items-center">
+                            <i class="fas fa-robot mr-2 text-indigo-600"></i> Generative AI Assessment
+                        </h3>
+                        <div class="prose prose-blue text-gray-700">
+                            <p class="leading-relaxed">
+                                {{ diagnosis.ai_explanation or "AI analysis processing complete. No specific patterns
+                                identified beyond standard parameters." }}
+                            </p>
+                        </div>
+                        <div class="mt-4 flex items-center gap-2 text-xs font-medium text-indigo-500">
+                            <i class="fas fa-check-circle"></i> Verified by IshtirafAI Neural Engine v3.3
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Acoustic Signal Analysis (The "Sound Data") -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="font-bold text-gray-800">
+                            <i class="fas fa-wave-square mr-2 text-blue-500"></i> Acoustic Signal Analysis
+                        </h3>
+                        <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">Fourier Transform</span>
+                    </div>
+
+                    <div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {% if diagnosis.advanced_metrics %}
+                        {% for key, value in diagnosis.advanced_metrics.items() %}
+                        <div class="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
+                            <div class="text-xs text-gray-500 uppercase tracking-wider mb-1 truncate">{{ key }}</div>
+                            <div class="font-bold text-gray-900 text-sm md:text-base break-words">{{ value }}</div>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="col-span-4 text-center text-gray-400 italic py-4">No acoustic metrics available in
+                            this scan.</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 3. Expert Recommendations -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="bg-blue-50 px-6 py-4 border-b border-blue-100">
+                        <h3 class="font-bold text-blue-900">
+                            <i class="fas fa-user-md mr-2"></i> Clinical Advice & Next Steps
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <ul class="space-y-4">
+                            {% if diagnosis.ai_advice %}
+                            {% for tip in diagnosis.ai_advice %}
+                            <li class="flex items-start">
+                                <div
+                                    class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-3 mt-1">
+                                    <i class="fas fa-arrow-right text-sm"></i>
+                                </div>
+                                <p class="text-gray-700 leading-relaxed">{{ tip }}</p>
+                            </li>
+                            {% endfor %}
+                            {% else %}
+                            <li class="text-gray-500 italic">No specific advice generated.</li>
+                            {% endif %}
+                        </ul>
+
+                        <div class="mt-6 pt-6 border-t border-gray-100">
+                            <p class="text-sm font-semibold text-gray-900 mb-2">Primary Recommendation:</p>
+                            <div
+                                class="bg-red-50 text-red-700 px-4 py-3 rounded-lg border border-red-100 flex items-center">
+                                <i class="fas fa-exclamation-triangle mr-3"></i>
+                                {{ diagnosis.recommendation }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Patient Form & Actions -->
+            <div class="space-y-6">
+
+                <!-- Patient Form -->
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+                    <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+                        <h3 class="font-bold text-white"><i class="fas fa-user-plus mr-2"></i> Save Record</h3>
+                    </div>
+                    <div class="p-6">
+                        <form action="{{ url_for('save_from_qr') }}" method="POST" class="space-y-4">
+                            <input type="hidden" name="payload" value="{{ payload }}">
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+                                <input type="text" name="name" required
+                                    class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm"
+                                    placeholder="Full Name">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                                    <input type="number" name="age" required
+                                        class="w-full rounded-lg border-gray-300 shadow-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                                    <select name="gender" required class="w-full rounded-lg border-gray-300 shadow-sm">
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <input type="tel" name="contact" placeholder="Contact Number (Optional)"
+                                class="w-full rounded-lg border-gray-300 shadow-sm">
+
+                            <button type="submit"
+                                class="w-full bg-gray-900 text-white py-3 rounded-lg font-bold hover:bg-gray-800 transition shadow-lg transform hover:-translate-y-0.5">
+                                Save to Database
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="window.print()"
+                        class="bg-white border border-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-50">
+                        <i class="fas fa-print mr-2"></i> Print
+                    </button>
+                    <a href="{{ url_for('qr_scanner') }}"
+                        class="bg-white border border-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-50 text-center flex items-center justify-center">
+                        <i class="fas fa-qrcode mr-2"></i> Scan New
+                    </a>
+                </div>
+
+            </div>
+        </div>
+
+        <p class="text-center text-gray-400 text-xs mt-12">IshtirafAI V3.0 Diagnostic Engine • Medical Grade Analysis
+        </p>
+    </div>
+</body>
+
+</html>

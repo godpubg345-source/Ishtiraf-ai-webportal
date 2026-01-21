@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}IshtirafAI - Web Portal{% endblock %}</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Modern Light CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern_light.css') }}">
+
+    <!-- Dark Theme CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dark_theme.css') }}">
+
+    <!-- Dashboard Enhanced CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard_enhanced.css') }}">
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- WaveSurfer.js for Audio Waveform -->
+    <script src="https://unpkg.com/wavesurfer.js@7"></script>
+
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+
+<body class="flex h-screen">
+    <!-- Session Timeout Warning Modal -->
+    <div id="sessionWarningModal" class="session-warning-modal">
+        <div class="session-warning-content">
+            <i class="fas fa-exclamation-triangle text-4xl text-orange-500 mb-4"></i>
+            <h3 class="text-xl font-bold mb-2">Session Expiring Soon!</h3>
+            <p class="text-gray-500 mb-4">Your session will expire in <span id="sessionCountdown">5:00</span></p>
+            <button onclick="extendSession()" class="btn-sci-fi px-6 py-2">Extend Session</button>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="hidden md:flex flex-col w-64 bg-white border-r border-gray-100 shadow-sm">
+        <!-- Logo -->
+        <div class="p-6 border-b border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1
+                        class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+                        IshtirafAI
+                    </h1>
+                    <p class="text-xs text-gray-400 mt-1">Medical AI Portal</p>
+                </div>
+                <!-- Dark Mode Toggle -->
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode"></button>
+            </div>
+        </div>
+
+        <!-- Notification Bell (below logo) -->
+        {% if current_user.is_authenticated %}
+        <div class="px-6 py-3 border-b border-gray-100">
+            <div class="notification-bell relative inline-block" onclick="toggleNotifications()">
+                <i class="fas fa-bell text-xl text-gray-400 hover:text-blue-500 cursor-pointer"></i>
+                <span class="notification-badge" id="notifCount">0</span>
+
+                <!-- Notification Dropdown -->
+                <div class="notification-dropdown" id="notifDropdown">
+                    <div class="p-4 border-b border-gray-100">
+                        <h4 class="font-bold">Notifications</h4>
+                    </div>
+                    <div id="notifList">
+                        <div class="empty-state py-8">
+                            <i class="fas fa-bell-slash"></i>
+                            <p class="text-sm">No new notifications</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <span class="ml-3 text-sm text-gray-500">Alerts</span>
+        </div>
+        {% endif %}
+
+        <!-- Navigation -->
+        <nav class="flex-1 p-4 space-y-2">
+            <a href="{{ url_for('dashboard') }}"
+                class="flex items-center px-4 py-3 rounded-lg hover:bg-blue-50 transition-all group">
+                <i class="fas fa-chart-line w-6 text-gray-400 group-hover:text-blue-500"></i>
+                <span class="font-medium text-gray-700 group-hover:text-blue-600">Dashboard</span>
+            </a>
+
+            <a href="{{ url_for('register_patient') }}"
+                class="flex items-center px-4 py-3 rounded-lg hover:bg-green-50 transition-all group">
+                <i class="fas fa-user-plus w-6 text-gray-400 group-hover:text-green-500"></i>
+                <span class="font-medium text-gray-700 group-hover:text-green-600">Register Patient</span>
+            </a>
+
+            <a href="{{ url_for('qr_scanner') }}"
+                class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-50 transition-all group">
+                <i class="fas fa-qrcode w-6 text-gray-400 group-hover:text-purple-500"></i>
+                <span class="font-medium text-gray-700 group-hover:text-purple-600">Scan QR</span>
+            </a>
+
+            <a href="{{ url_for('realtime.analyzer') }}"
+                class="flex items-center px-4 py-3 rounded-lg hover:bg-red-50 transition-all group">
+                <i class="fas fa-stethoscope w-6 text-gray-400 group-hover:text-red-500"></i>
+                <span class="font-medium text-gray-700 group-hover:text-red-600">Live Analysis</span>
+            </a>
+
+            <div class="pt-4 border-t border-gray-100 mt-4">
+                <a href="{{ url_for('settings.profile') }}"
+                    class="flex items-center px-4 py-3 rounded-lg hover:bg-gray-50 transition-all group">
+                    <i class="fas fa-cog w-6 text-gray-400 group-hover:text-gray-600"></i>
+                    <span class="font-medium text-gray-700">Settings</span>
+                </a>
+            </div>
+
+            <!-- Admin Section (only for admin/doctor) -->
+            {% if current_user.is_authenticated and current_user.role in ['admin', 'doctor'] %}
+            <div class="pt-4 border-t border-gray-100 mt-4">
+                <p class="px-4 text-xs font-bold text-gray-400 uppercase mb-2">Admin</p>
+
+                <a href="{{ url_for('admin.bulk_import_page') }}"
+                    class="flex items-center px-4 py-3 rounded-lg hover:bg-orange-50 transition-all group">
+                    <i class="fas fa-file-import w-6 text-gray-400 group-hover:text-orange-500"></i>
+                    <span class="font-medium text-gray-700 group-hover:text-orange-600">Bulk Import</span>
+                </a>
+
+                {% if current_user.role == 'admin' %}
+                <a href="{{ url_for('admin.audit_logs') }}"
+                    class="flex items-center px-4 py-3 rounded-lg hover:bg-red-50 transition-all group">
+                    <i class="fas fa-clipboard-list w-6 text-gray-400 group-hover:text-red-500"></i>
+                    <span class="font-medium text-gray-700 group-hover:text-red-600">Audit Logs</span>
+                </a>
+
+                <a href="{{ url_for('admin.dashboard') }}"
+                    class="flex items-center px-4 py-3 rounded-lg hover:bg-indigo-50 transition-all group">
+                    <i class="fas fa-users-cog w-6 text-gray-400 group-hover:text-indigo-500"></i>
+                    <span class="font-medium text-gray-700 group-hover:text-indigo-600">User Management</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </nav>
+
+        <!-- User Profile -->
+        {% if current_user.is_authenticated %}
+        <div class="p-4 border-t border-gray-100 bg-gray-50">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md">
+                    {{ current_user.name[:2].upper() }}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-800 truncate">{{ current_user.name }}</p>
+                    <p class="text-xs text-gray-400 capitalize">{{ current_user.role }}</p>
+                </div>
+                <a href="{{ url_for('auth.logout') }}" class="text-gray-400 hover:text-red-500 transition"
+                    title="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto relative">
+        <!-- Mobile Header -->
+        <div
+            class="md:hidden flex items-center justify-between p-4 bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+                IshtirafAI</h1>
+            <button class="text-gray-500"><i class="fas fa-bars text-xl"></i></button>
+        </div>
+
+        <div class="p-6 md:p-8">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+</body>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+<script>
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Dark Mode Toggle
+    // ═══════════════════════════════════════════════════════════════════════════
+    function toggleTheme() {
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', newTheme);
+        localStorage.setItem('ishtirafai-theme', newTheme);
+    }
+
+    // Load saved theme on page load
+    (function initTheme() {
+        const savedTheme = localStorage.getItem('ishtirafai-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    })();
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Notifications
+    // ═══════════════════════════════════════════════════════════════════════════
+    function toggleNotifications() {
+        const dropdown = document.getElementById('notifDropdown');
+        dropdown.classList.toggle('show');
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function (e) {
+        const bell = document.querySelector('.notification-bell');
+        const dropdown = document.getElementById('notifDropdown');
+        if (bell && !bell.contains(e.target)) {
+            dropdown?.classList.remove('show');
+        }
+    });
+
+    // Fetch notifications (simulated for now)
+    function fetchNotifications() {
+        // In production, this would be a WebSocket or API call
+        const notifications = [
+            { id: 1, type: 'critical', text: 'New critical case detected', time: '2m ago', unread: true },
+            { id: 2, type: 'info', text: 'Weekly report generated', time: '1h ago', unread: false },
+        ];
+
+        const count = notifications.filter(n => n.unread).length;
+        const countEl = document.getElementById('notifCount');
+        if (countEl) {
+            countEl.textContent = count;
+            countEl.style.display = count > 0 ? 'flex' : 'none';
+        }
+
+        const listEl = document.getElementById('notifList');
+        if (listEl && notifications.length > 0) {
+            listEl.innerHTML = notifications.map(n => `
+            <div class="notification-item ${n.unread ? 'unread' : ''}">
+                <div class="activity-time">${n.time}</div>
+                <div class="activity-text">${n.text}</div>
+            </div>
+        `).join('');
+        }
+    }
+
+    // Initialize notifications
+    setTimeout(fetchNotifications, 1000);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Session Timeout Warning
+    // ═══════════════════════════════════════════════════════════════════════════
+    let sessionTimeout = 24 * 60; // 24 hours in minutes (from config)
+    let warningShown = false;
+    let countdownInterval;
+
+    function checkSessionTimeout() {
+        // Show warning 5 minutes before expiry
+        const timeLeft = sessionTimeout - (Date.now() / 60000 % sessionTimeout);
+
+        if (timeLeft <= 5 && !warningShown) {
+            showSessionWarning(Math.floor(timeLeft * 60));
+        }
+    }
+
+    function showSessionWarning(seconds) {
+        warningShown = true;
+        const modal = document.getElementById('sessionWarningModal');
+        const countdown = document.getElementById('sessionCountdown');
+
+        modal.classList.add('show');
+
+        countdownInterval = setInterval(() => {
+            seconds--;
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            countdown.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+            if (seconds <= 0) {
+                clearInterval(countdownInterval);
+                window.location.href = '/auth/logout';
+            }
+        }, 1000);
+    }
+
+    function extendSession() {
+        clearInterval(countdownInterval);
+        warningShown = false;
+        document.getElementById('sessionWarningModal').classList.remove('show');
+
+        // Ping server to extend session
+        fetch('/api/v1/auth/refresh', { method: 'POST', credentials: 'same-origin' })
+            .catch(() => console.log('Session extended locally'));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Chart.js Helper Functions
+    // ═══════════════════════════════════════════════════════════════════════════
+    function createLineChart(canvasId, labels, datasets, options = {}) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return null;
+
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const textColor = isDark ? '#9ca3af' : '#6b7280';
+        const gridColor = isDark ? '#374151' : '#e5e7eb';
+
+        return new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: textColor } }
+                },
+                scales: {
+                    x: { ticks: { color: textColor }, grid: { color: gridColor } },
+                    y: { ticks: { color: textColor }, grid: { color: gridColor } }
+                },
+                ...options
+            }
+        });
+    }
+
+    function createDoughnutChart(canvasId, labels, data, colors) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return null;
+
+        return new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{
+                    data,
+                    backgroundColor: colors,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AI Confidence Gauge
+    // ═══════════════════════════════════════════════════════════════════════════
+    function createConfidenceGauge(containerId, value) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const circumference = 2 * Math.PI * 45;
+        const offset = circumference - (value / 100) * circumference;
+
+        let color = '#10b981'; // green
+        if (value < 70) color = '#f97316'; // orange
+        if (value < 50) color = '#ef4444'; // red
+
+        container.innerHTML = `
+        <svg width="120" height="120">
+            <circle class="bg" cx="60" cy="60" r="45" stroke="#374151"/>
+            <circle class="progress" cx="60" cy="60" r="45" 
+                stroke="${color}"
+                stroke-dasharray="${circumference}"
+                stroke-dashoffset="${offset}"/>
+        </svg>
+        <div class="value">
+            <span style="color: ${color}">${value}%</span>
+            <span style="font-size: 10px; color: #9ca3af;">Confidence</span>
+        </div>
+    `;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Waveform Viewer
+    // ═══════════════════════════════════════════════════════════════════════════
+    function initWaveform(containerId, audioUrl) {
+        if (typeof WaveSurfer === 'undefined') return null;
+
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+        const wavesurfer = WaveSurfer.create({
+            container: '#' + containerId,
+            waveColor: isDark ? '#4b5563' : '#cbd5e1',
+            progressColor: '#06b6d4',
+            cursorColor: '#8b5cf6',
+            barWidth: 2,
+            barRadius: 3,
+            responsive: true,
+            height: 80
+        });
+
+        if (audioUrl) {
+            wavesurfer.load(audioUrl);
+        }
+
+        return wavesurfer;
+    }
+</script>
+
+</html>

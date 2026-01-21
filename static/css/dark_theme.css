@@ -1,0 +1,363 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   IshtirafAI - Dark Theme CSS
+   Toggle between light and dark mode with smooth transitions
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* CSS Variables for Dark Mode */
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    --bg-card: #ffffff;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --border-color: #e5e7eb;
+    --accent-cyan: #06b6d4;
+    --accent-purple: #8b5cf6;
+    --accent-green: #10b981;
+    --accent-red: #ef4444;
+    --accent-orange: #f97316;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
+}
+
+/* Dark Mode Variables */
+[data-theme="dark"] {
+    --bg-primary: #0a0e17;
+    --bg-secondary: #111827;
+    --bg-card: #1f2937;
+    --text-primary: #e0ffff;
+    --text-secondary: #9ca3af;
+    --text-muted: #4b5563;
+    --border-color: #374151;
+    --shadow: 0 4px 20px rgba(0, 255, 255, 0.1);
+    --gradient-primary: linear-gradient(135deg, #06b6d4, #8b5cf6);
+}
+
+/* Apply theme colors */
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Sidebar */
+[data-theme="dark"] aside {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] aside h1 {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+[data-theme="dark"] aside a span,
+[data-theme="dark"] aside p {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] aside a:hover {
+    background-color: rgba(6, 182, 212, 0.1) !important;
+}
+
+/* Cards */
+[data-theme="dark"] .hud-card,
+[data-theme="dark"] .bg-white {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    box-shadow: var(--shadow);
+}
+
+/* Text colors */
+[data-theme="dark"] .text-gray-700,
+[data-theme="dark"] .text-gray-800,
+[data-theme="dark"] .text-gray-900 {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .text-gray-400,
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-gray-600 {
+    color: var(--text-secondary) !important;
+}
+
+/* Borders */
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-gray-300 {
+    border-color: var(--border-color) !important;
+}
+
+/* Inputs */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+    border-color: var(--accent-cyan) !important;
+    box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2) !important;
+}
+
+/* Tables */
+[data-theme="dark"] table th,
+[data-theme="dark"] table td {
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] table tr:hover {
+    background-color: rgba(6, 182, 212, 0.05) !important;
+}
+
+/* Buttons */
+[data-theme="dark"] .btn-primary,
+[data-theme="dark"] .btn-sci-fi {
+    background: var(--gradient-primary);
+    color: white;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Dark Mode Toggle Button Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.theme-toggle {
+    position: relative;
+    width: 60px;
+    height: 30px;
+    background: linear-gradient(145deg, #e2e8f0, #cbd5e1);
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0;
+}
+
+[data-theme="dark"] .theme-toggle {
+    background: linear-gradient(145deg, #1e293b, #334155);
+}
+
+.theme-toggle::before {
+    content: '☀️';
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .theme-toggle::before {
+    content: '🌙';
+    left: calc(100% - 26px);
+    background: #1e293b;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Notification Bell Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.notification-bell {
+    position: relative;
+    cursor: pointer;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--accent-red);
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+.notification-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    display: none;
+}
+
+.notification-dropdown.show {
+    display: block;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.notification-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s;
+}
+
+.notification-item:hover {
+    background: rgba(6, 182, 212, 0.05);
+}
+
+.notification-item.unread {
+    background: rgba(6, 182, 212, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Session Timeout Warning Modal
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.session-warning-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.session-warning-modal.show {
+    display: flex;
+}
+
+.session-warning-content {
+    background: var(--bg-card);
+    padding: 32px;
+    border-radius: 16px;
+    text-align: center;
+    max-width: 400px;
+    border: 2px solid var(--accent-orange);
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    75% {
+        transform: translateX(5px);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AI Confidence Gauge
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.confidence-gauge {
+    position: relative;
+    width: 120px;
+    height: 120px;
+}
+
+.confidence-gauge svg {
+    transform: rotate(-90deg);
+}
+
+.confidence-gauge circle {
+    fill: none;
+    stroke-width: 10;
+    stroke-linecap: round;
+}
+
+.confidence-gauge .bg {
+    stroke: var(--border-color);
+}
+
+.confidence-gauge .progress {
+    stroke: var(--accent-cyan);
+    transition: stroke-dashoffset 1s ease;
+}
+
+.confidence-gauge .value {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Charts Container
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+.chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+
+.chart-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}

@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv/
+ENV/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Database (don't include local db in image)
+*.db
+*.sqlite3
+
+# Logs
+*.log
+error_log.txt
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov/
+
+# Misc
+*.md
+!README.md
+.env
+.env.*
+*.key

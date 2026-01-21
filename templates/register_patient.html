@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Register New Patient - IshtirafAI{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-10">
+        <div
+            class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 mb-4 shadow-lg">
+            <i class="fas fa-user-plus text-3xl text-white"></i>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-800">Register New Patient</h1>
+        <p class="text-gray-500 mt-2">Enter patient details to generate a unique Patient ID</p>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div
+        class="mb-6 p-4 rounded-xl {{ 'bg-green-100 text-green-700 border border-green-200' if category == 'success' else 'bg-red-100 text-red-700 border border-red-200' }}">
+        <i class="fas {{ 'fa-check-circle' if category == 'success' else 'fa-exclamation-circle' }} mr-2"></i>
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Registration Form -->
+    <div class="glass-panel p-8">
+        <form method="POST" action="{{ url_for('register_patient') }}" class="space-y-6">
+
+            <!-- Name -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    <i class="fas fa-user text-blue-500 mr-2"></i>Full Name *
+                </label>
+                <input type="text" name="name" required placeholder="e.g., Ali Khan" class="w-full text-lg">
+            </div>
+
+            <!-- Age & Gender Row -->
+            <div class="grid grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                        <i class="fas fa-birthday-cake text-purple-500 mr-2"></i>Age *
+                    </label>
+                    <input type="number" name="age" required min="0" max="120" placeholder="45" class="w-full text-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                        <i class="fas fa-venus-mars text-pink-500 mr-2"></i>Gender *
+                    </label>
+                    <select name="gender" required class="w-full text-lg">
+                        <option value="">Select...</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Contact -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    <i class="fas fa-phone text-green-500 mr-2"></i>Contact Number
+                </label>
+                <input type="tel" name="contact" placeholder="0300-1234567" class="w-full text-lg">
+            </div>
+
+            <!-- Medical History (Optional) -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    <i class="fas fa-notes-medical text-red-500 mr-2"></i>Known Conditions (Optional)
+                </label>
+                <textarea name="medical_history" rows="3"
+                    placeholder="e.g., Diabetes, Hypertension, Previous surgeries..." class="w-full"></textarea>
+            </div>
+
+            <!-- Divider -->
+            <div class="border-t border-gray-200 pt-6"></div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="w-full btn-primary py-4 text-lg font-bold rounded-xl shadow-lg">
+                <i class="fas fa-id-card mr-2"></i> Generate Patient ID
+            </button>
+        </form>
+    </div>
+
+    <!-- Info Box -->
+    <div class="mt-8 bg-blue-50 border border-blue-100 rounded-xl p-6">
+        <h3 class="font-bold text-blue-800 mb-2"><i class="fas fa-info-circle mr-2"></i>What happens next?</h3>
+        <ol class="text-sm text-blue-700 space-y-2 list-decimal list-inside">
+            <li>A unique <strong>Patient ID</strong> will be generated (e.g., PAT-1001)</li>
+            <li>Enter this ID on the <strong>Pi5 Stethoscope</strong> before scanning</li>
+            <li>After scanning, the diagnosis will be linked to this patient record</li>
+            <li>Scan the <strong>QR code</strong> with your phone to sync the report</li>
+        </ol>
+    </div>
+</div>
+{% endblock %}

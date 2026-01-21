@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Import - IshtirafAI{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="hud-card mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">📦 Bulk Patient Import</h1>
+                <p class="text-gray-500">Import patients from CSV or Excel files</p>
+            </div>
+            <a href="/api/bulk/template/patients" class="btn-secondary">
+                <i class="fas fa-download mr-2"></i> Download Template
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Upload Section -->
+        <div class="hud-card">
+            <h2 class="text-lg font-bold mb-4">Upload File</h2>
+
+            <form id="importForm" enctype="multipart/form-data">
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-4 hover:border-blue-500 transition-colors"
+                    id="dropZone">
+                    <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-600 mb-2">Drag & drop your file here</p>
+                    <p class="text-sm text-gray-400 mb-4">or</p>
+                    <input type="file" id="fileInput" name="file" accept=".csv,.xlsx,.xls" class="hidden">
+                    <button type="button" onclick="document.getElementById('fileInput').click()"
+                        class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                        Choose File
+                    </button>
+                </div>
+
+                <div id="fileInfo" class="hidden bg-gray-50 p-4 rounded-lg mb-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <i class="fas fa-file-csv text-green-500 mr-2"></i>
+                            <span id="fileName">filename.csv</span>
+                        </div>
+                        <button type="button" onclick="clearFile()" class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="text-sm text-gray-500 mt-1" id="fileSize">0 KB</div>
+                </div>
+
+                <button type="submit" id="submitBtn"
+                    class="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 disabled:bg-gray-400"
+                    disabled>
+                    <i class="fas fa-upload mr-2"></i> Import Patients
+                </button>
+            </form>
+        </div>
+
+        <!-- Instructions -->
+        <div class="hud-card">
+            <h2 class="text-lg font-bold mb-4">File Requirements</h2>
+
+            <div class="space-y-4">
+                <div class="flex items-start">
+                    <div class="bg-blue-100 text-blue-600 p-2 rounded-lg mr-3">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold">Supported Formats</h3>
+                        <p class="text-sm text-gray-500">CSV (.csv), Excel (.xlsx, .xls)</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="bg-green-100 text-green-600 p-2 rounded-lg mr-3">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold">Required Columns</h3>
+                        <p class="text-sm text-gray-500">name, age, gender</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="bg-yellow-100 text-yellow-600 p-2 rounded-lg mr-3">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold">Optional Columns</h3>
+                        <p class="text-sm text-gray-500">contact, medical_history</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 bg-gray-50 p-4 rounded-lg">
+                <h3 class="font-bold mb-2">Example Data</h3>
+                <code class="text-xs block bg-gray-100 p-3 rounded overflow-x-auto">
+name,age,gender,contact<br>
+John Doe,45,M,+123456789<br>
+Jane Smith,32,F,+987654321
+                </code>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div id="resultsSection" class="hidden mt-6">
+        <div class="hud-card">
+            <h2 class="text-lg font-bold mb-4">Import Results</h2>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="bg-green-50 p-4 rounded-lg text-center">
+                    <div class="text-3xl font-bold text-green-600" id="importedCount">0</div>
+                    <div class="text-sm text-gray-500">Successfully Imported</div>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg text-center">
+                    <div class="text-3xl font-bold text-red-600" id="failedCount">0</div>
+                    <div class="text-sm text-gray-500">Failed</div>
+                </div>
+            </div>
+
+            <div id="errorsList" class="hidden">
+                <h3 class="font-bold text-red-600 mb-2">Errors:</h3>
+                <div class="max-h-48 overflow-y-auto bg-red-50 p-3 rounded-lg">
+                    <ul id="errorsUl" class="text-sm text-red-700 list-disc list-inside"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Drag & Drop
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-blue-500', 'bg-blue-50');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            showFileInfo(e.dataTransfer.files[0]);
+        }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+            showFileInfo(e.target.files[0]);
+        }
+    });
+
+    function showFileInfo(file) {
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(2) + ' KB';
+        fileInfo.classList.remove('hidden');
+        submitBtn.disabled = false;
+    }
+
+    function clearFile() {
+        fileInput.value = '';
+        fileInfo.classList.add('hidden');
+        submitBtn.disabled = true;
+    }
+
+    // Form Submit
+    document.getElementById('importForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Importing...';
+
+        try {
+            const response = await fetch('/api/bulk/import/patients', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            document.getElementById('resultsSection').classList.remove('hidden');
+            document.getElementById('importedCount').textContent = result.imported || 0;
+            document.getElementById('failedCount').textContent = result.failed || 0;
+
+            if (result.errors && result.errors.length > 0) {
+                document.getElementById('errorsList').classList.remove('hidden');
+                const ul = document.getElementById('errorsUl');
+                ul.innerHTML = '';
+                result.errors.forEach(err => {
+                    const li = document.createElement('li');
+                    li.textContent = `Row ${err.row}: ${err.error}`;
+                    ul.appendChild(li);
+                });
+            } else {
+                document.getElementById('errorsList').classList.add('hidden');
+            }
+
+        } catch (err) {
+            alert('Import failed: ' + err.message);
+        }
+
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-upload mr-2"></i> Import Patients';
+    });
+</script>
+{% endblock %}

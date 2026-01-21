@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}IshtirafAI - Login History{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold mb-2">
+            <i class="fas fa-history mr-2 text-cyan-500"></i>Login History
+        </h1>
+        <p class="text-gray-500">View your recent login activity and device access.</p>
+    </div>
+
+    <!-- Current Session Card -->
+    <div class="chart-card mb-6">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-semibold">Current Session</h3>
+                    <p class="text-sm text-gray-500">
+                        <span class="status-dot online"></span>
+                        Active now • {{ request.remote_addr }}
+                    </p>
+                </div>
+            </div>
+            <a href="{{ url_for('security.export_my_data') }}" class="btn-sci-fi text-sm px-4 py-2">
+                <i class="fas fa-download mr-2"></i>Export My Data
+            </a>
+        </div>
+    </div>
+
+    <!-- Login History Table -->
+    <div class="chart-card">
+        <h3 class="mb-4"><i class="fas fa-list mr-2"></i>Recent Logins</h3>
+
+        {% if logs %}
+        <table class="login-history-table">
+            <thead>
+                <tr>
+                    <th>Date & Time</th>
+                    <th>IP Address</th>
+                    <th>Device</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>
+                        <div class="font-medium">{{ log.created_at.strftime('%Y-%m-%d') if log.created_at else 'N/A' }}
+                        </div>
+                        <div class="text-xs text-gray-500">{{ log.created_at.strftime('%H:%M:%S') if log.created_at else
+                            '' }}</div>
+                    </td>
+                    <td class="font-mono text-sm">{{ log.ip_address or 'Unknown' }}</td>
+                    <td>
+                        {% if 'Mobile' in (log.user_agent or '') %}
+                        <span class="device-badge mobile">
+                            <i class="fas fa-mobile-alt"></i> Mobile
+                        </span>
+                        {% else %}
+                        <span class="device-badge desktop">
+                            <i class="fas fa-desktop"></i> Desktop
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.response_status == 200 %}
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                            <i class="fas fa-check mr-1"></i>Success
+                        </span>
+                        {% else %}
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                            <i class="fas fa-times mr-1"></i>Failed
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-history"></i>
+            <h3>No login history found</h3>
+            <p class="text-sm">Login history will appear here after you login.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Security Tips -->
+    <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <h4 class="font-semibold text-blue-700 mb-2">
+            <i class="fas fa-shield-alt mr-2"></i>Security Tips
+        </h4>
+        <ul class="text-sm text-blue-600 space-y-1">
+            <li>• Review your login history regularly for suspicious activity</li>
+            <li>• If you see unknown devices or locations, change your password immediately</li>
+            <li>• Enable 2-Factor Authentication for added security</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}IshtirafAI - Doctor Performance{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold mb-2">
+            <i class="fas fa-user-md mr-2 text-green-500"></i>Doctor Performance
+        </h1>
+        <p class="text-gray-500">Track diagnostic accuracy and response times per doctor.</p>
+    </div>
+
+    <!-- Doctors Table -->
+    <div class="chart-card">
+        {% if doctors %}
+        <table class="login-history-table">
+            <thead>
+                <tr>
+                    <th>Doctor</th>
+                    <th>Email</th>
+                    <th>Total Diagnoses</th>
+                    <th>Accuracy</th>
+                    <th>Avg Response</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doctor in doctors %}
+                <tr>
+                    <td>
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                                {{ doctor.name[:2].upper() }}
+                            </div>
+                            <span class="font-semibold">{{ doctor.name }}</span>
+                        </div>
+                    </td>
+                    <td class="text-gray-500">{{ doctor.email }}</td>
+                    <td>
+                        <span class="font-bold text-cyan-500">{{ doctor.total_diagnoses }}</span>
+                    </td>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            <div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-green-500" style="width: {{ doctor.accuracy }}%;"></div>
+                            </div>
+                            <span class="text-sm font-semibold">{{ doctor.accuracy }}%</span>
+                        </div>
+                    </td>
+                    <td>{{ doctor.avg_response_time }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-user-md"></i>
+            <h3>No doctors found</h3>
+            <p class="text-sm">Add doctors to the system to track their performance.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Info Box -->
+    <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <h4 class="font-semibold text-blue-700 mb-2">
+            <i class="fas fa-info-circle mr-2"></i>How Accuracy is Calculated
+        </h4>
+        <p class="text-sm text-blue-600">
+            Accuracy is based on confirmed diagnoses where the AI prediction matched
+            the doctor's final assessment. This feature requires doctors to confirm
+            or override AI predictions through the patient detail page.
+        </p>
+    </div>
+</div>
+{% endblock %}

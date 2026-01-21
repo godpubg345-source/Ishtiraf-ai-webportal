@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}500 - Server Error{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="error-code">500</div>
+    <h1 class="error-message">Internal Server Error</h1>
+    <p class="text-muted mb-3">
+        Something went wrong on our end. Please try again later.
+    </p>
+    <div class="flex gap-md flex-center">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+            ← Back to Dashboard
+        </a>
+        <a href="javascript:location.reload()" class="btn btn-outline">
+            Retry
+        </a>
+    </div>
+
+    {% if error_id %}
+    <p class="text-muted mt-3" style="font-size: 0.85rem;">
+        Error ID: {{ error_id }}
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

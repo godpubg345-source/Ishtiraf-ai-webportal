@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}IshtirafAI - Mission Control{% endblock %}
+
+{% block content %}
+<!-- Dashboard Header with Quick Stats -->
+<div class="dashboard-grid mb-8">
+    <!-- Total Patients Card -->
+    <div class="col-span-3">
+        <div class="stat-card info">
+            <div class="icon info"><i class="fas fa-users"></i></div>
+            <div class="value">{{ patients|length }}</div>
+            <div class="label">Total Patients</div>
+            <div class="trend up"><i class="fas fa-arrow-up"></i> Database Online</div>
+        </div>
+    </div>
+
+    <!-- Critical Cases Card -->
+    <div class="col-span-3">
+        <div class="stat-card danger">
+            <div class="icon danger"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="value">{{ critical_count }}</div>
+            <div class="label">Critical Cases</div>
+            <div class="trend down"><i class="fas fa-circle"></i> Attention Required</div>
+        </div>
+    </div>
+
+    <!-- Average Risk Score Card -->
+    <div class="col-span-3">
+        <div class="stat-card warning">
+            <div class="icon warning"><i class="fas fa-chart-line"></i></div>
+            <div class="value">{{ avg_risk }}</div>
+            <div class="label">Avg Risk Score</div>
+            <div class="metric-progress mt-2">
+                <div class="bar {{ 'red' if avg_risk > 5 else 'cyan' }}" style="width: {{ avg_risk * 10 }}%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Action Card -->
+    <div class="col-span-3">
+        <div class="action-card" onclick="window.location.href='{{ url_for('realtime.analyzer') }}'">
+            <i class="fas fa-plus-circle"></i>
+            <div class="font-bold">New Scan</div>
+            <div class="text-sm text-gray-500">Start AI Analysis</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="dashboard-grid mb-8">
+    <!-- Weekly Trends Chart -->
+    <div class="col-span-8">
+        <div class="chart-card">
+            <h3><i class="fas fa-chart-area mr-2"></i>Weekly Diagnosis Trends</h3>
+            <div class="chart-container">
+                <canvas id="weeklyTrendsChart"></canvas>
+            </div>
+            <div class="chart-legend">
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: #06b6d4;"></span>
+                    Normal
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: #ef4444;"></span>
+                    Abnormal
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Diagnosis Distribution -->
+    <div class="col-span-4">
+        <div class="chart-card">
+            <h3><i class="fas fa-pie-chart mr-2"></i>Diagnosis Distribution</h3>
+            <div class="chart-container">
+                <canvas id="distributionChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity & Performance Row -->
+<div class="dashboard-grid mb-8">
+    <!-- Recent Diagnoses Table -->
+    <div class="col-span-8">
+        <div class="chart-card">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="mb-0"><i class="fas fa-list mr-2"></i>Recent Diagnoses</h3>
+                <div class="flex gap-2">
+                    <input type="text" id="searchInput" placeholder="Search ID..."
+                        class="bg-gray-100 border border-gray-200 px-3 py-1 text-sm rounded focus:border-cyan-500 outline-none">
+                    <button class="btn-sci-fi text-xs py-1 px-3" onclick="filterTable()">Filter</button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="login-history-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Timestamp</th>
+                            <th>Result</th>
+                            <th>Confidence</th>
+                            <th>Risk</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="diagnosisTable">
+                        {% for patient in patients[:10] %}
+                        {% for diagnosis in patient.diagnoses[-1:] %}
+                        <tr>
+                            <td class="font-mono text-sm text-gray-500">{{ diagnosis.diagnosis_id }}</td>
+                            <td class="font-semibold">{{ patient.name }}</td>
+                            <td class="text-gray-500">{{ diagnosis.timestamp.strftime('%Y-%m-%d %H:%M') if
+                                diagnosis.timestamp else 'N/A' }}</td>
+                            <td>
+                                {% if "NORMAL" in diagnosis.diagnosis_result %}
+                                <span
+                                    class="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">NORMAL</span>
+                                {% else %}
+                                <span
+                                    class="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 pulse-critical">ABNORMAL</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-12 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                        <div class="h-full bg-cyan-500"
+                                            style="width: {{ (diagnosis.confidence or 0) * 100 }}%;"></div>
+                                    </div>
+                                    <span class="text-xs font-semibold">{{ ((diagnosis.confidence or 0) * 100)|round|int
+                                        }}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <span
+                                        class="font-bold {{ 'text-red-500' if diagnosis.risk_score > 5 else 'text-cyan-500' }}">
+                                        {{ diagnosis.risk_score }}
+                                    </span>
+                                    <div class="w-12 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                        <div class="h-full {{ 'bg-red-500' if diagnosis.risk_score > 5 else 'bg-cyan-500' }}"
+                                            style="width: {{ diagnosis.risk_score * 10 }}%;"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="flex gap-2">
+                                <a href="{{ url_for('patient_detail', id=patient.id) }}"
+                                    class="text-cyan-500 hover:text-cyan-700" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('export_pdf', diagnosis_id=diagnosis.id) }}"
+                                    class="text-purple-500 hover:text-purple-700" title="Download PDF">
+                                    <i class="fas fa-file-pdf"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Timeline -->
+    <div class="col-span-4">
+        <div class="chart-card">
+            <h3><i class="fas fa-stream mr-2"></i>Recent Activity</h3>
+            <div class="activity-timeline mt-4">
+                {% for patient in patients[:5] %}
+                {% for diagnosis in patient.diagnoses[-1:] %}
+                <div class="activity-item {{ 'critical' if diagnosis.risk_score > 5 else 'success' }}">
+                    <div class="activity-time">{{ diagnosis.timestamp.strftime('%H:%M') if diagnosis.timestamp else
+                        'N/A' }}</div>
+                    <div class="activity-text">
+                        <strong>{{ patient.name }}</strong> -
+                        {{ diagnosis.diagnosis_result[:30] }}
+                    </div>
+                </div>
+                {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Metrics -->
+<div class="dashboard-grid">
+    <div class="col-span-12">
+        <div class="chart-card">
+            <h3><i class="fas fa-tachometer-alt mr-2"></i>AI Performance Metrics</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
+                <div class="metric-bar">
+                    <span class="metric-label">Accuracy</span>
+                    <div class="metric-progress">
+                        <div class="bar green" style="width: 94%;"></div>
+                    </div>
+                    <span class="metric-value text-green-500">94%</span>
+                </div>
+                <div class="metric-bar">
+                    <span class="metric-label">Sensitivity</span>
+                    <div class="metric-progress">
+                        <div class="bar cyan" style="width: 91%;"></div>
+                    </div>
+                    <span class="metric-value text-cyan-500">91%</span>
+                </div>
+                <div class="metric-bar">
+                    <span class="metric-label">Specificity</span>
+                    <div class="metric-progress">
+                        <div class="bar purple" style="width: 88%;"></div>
+                    </div>
+                    <span class="metric-value text-purple-500">88%</span>
+                </div>
+                <div class="metric-bar">
+                    <span class="metric-label">Avg Response</span>
+                    <div class="metric-progress">
+                        <div class="bar cyan" style="width: 95%;"></div>
+                    </div>
+                    <span class="metric-value text-cyan-500">1.2s</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize charts after DOM loads
+    document.addEventListener('DOMContentLoaded', function () {
+        // Weekly Trends Line Chart
+        createLineChart('weeklyTrendsChart',
+            ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            [
+                {
+                    label: 'Normal',
+                    data: [12, 15, 8, 18, 14, 9, 11],
+                    borderColor: '#06b6d4',
+                    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Abnormal',
+                    data: [3, 5, 2, 7, 4, 2, 3],
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }
+            ]
+        );
+
+        // Distribution Doughnut Chart
+        createDoughnutChart('distributionChart',
+            ['Normal', 'Cardiac', 'Pulmonary', 'Critical'],
+            [65, 15, 12, 8],
+            ['#10b981', '#8b5cf6', '#06b6d4', '#ef4444']
+        );
+    });
+
+    // Table search filter
+    function filterTable() {
+        const searchValue = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('#diagnosisTable tr');
+
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchValue) ? '' : 'none';
+        });
+    }
+
+    // Add enter key listener for search
+    document.getElementById('searchInput')?.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') filterTable();
+    });
+</script>
+{% endblock %}

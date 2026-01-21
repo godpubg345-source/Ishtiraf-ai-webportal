@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - IshtirafAI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern_light.css') }}">
+</head>
+
+<body class="h-screen flex items-center justify-center overflow-hidden">
+    <!-- Animated Background Globs -->
+    <div class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none">
+        <div
+            class="absolute top-0 left-0 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob">
+        </div>
+        <div
+            class="absolute top-0 right-0 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000">
+        </div>
+        <div
+            class="absolute -bottom-8 left-20 w-96 h-96 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000">
+        </div>
+    </div>
+
+    <div class="glass-panel p-10 w-full max-w-md shadow-2xl relative z-10">
+        <div class="text-center mb-8 logo-area">
+            <h2 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+                IshtirafAI</h2>
+            <p class="text-gray-500 mt-2">Next-Gen Medical Diagnostics</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="bg-red-100 text-red-700 border border-red-200 p-3 rounded-lg mb-6 text-center text-sm font-medium">
+            {{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-6">
+            <div class="group">
+                <label class="block text-gray-700 text-sm font-semibold mb-2 ml-1">Email Address</label>
+                <input type="email" name="email" required class="w-full transition-all duration-200">
+            </div>
+            <div class="group">
+                <label class="block text-gray-700 text-sm font-semibold mb-2 ml-1">Password</label>
+                <input type="password" name="password" required class="w-full transition-all duration-200">
+            </div>
+
+            <button type="submit" class="w-full btn-primary text-white font-bold py-3 rounded-lg shadow-lg mt-4">
+                Sign In
+            </button>
+        </form>
+
+        <div class="mt-8 text-center space-y-2">
+            <p class="text-gray-500 text-sm">
+                New here? <a href="{{ url_for('auth.register') }}"
+                    class="text-blue-600 font-semibold hover:text-blue-700">Create Account</a>
+            </p>
+            <p>
+                <a href="{{ url_for('auth.forgot_password') }}"
+                    class="text-gray-400 hover:text-gray-600 text-xs transition-colors">Forgot Password?</a>
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

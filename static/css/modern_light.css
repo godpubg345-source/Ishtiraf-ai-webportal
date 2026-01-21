@@ -1,0 +1,415 @@
+/* 
+  IshtirafAI - Modern Light Theme 
+  "Bright, Clean, Heavily Animated"
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --primary: #2563eb;
+    --primary-gradient: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+    --secondary: #64748b;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+
+    --bg-body: #f1f5f9;
+    --bg-glass: rgba(255, 255, 255, 0.85);
+    --border-glass: rgba(255, 255, 255, 0.5);
+
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+
+    --shadow-sm: 0 2px 4px rgba(148, 163, 184, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(148, 163, 184, 0.15), 0 2px 4px -1px rgba(148, 163, 184, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(148, 163, 184, 0.15), 0 4px 6px -2px rgba(148, 163, 184, 0.1);
+    --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.15);
+
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+}
+
+body {
+    font-family: 'Outfit', sans-serif !important;
+    background-color: #fce7f3;
+    /* Fallback */
+    background-image:
+        radial-gradient(at 0% 0%, hsla(253, 16%, 93%, 1) 0, transparent 50%),
+        radial-gradient(at 50% 0%, hsla(225, 39%, 90%, 1) 0, transparent 50%),
+        radial-gradient(at 100% 0%, hsla(339, 49%, 90%, 1) 0, transparent 50%);
+    background-size: 200% 200%;
+    animation: bg-shift 15s ease infinite;
+    color: var(--text-main) !important;
+    min-height: 100vh;
+}
+
+/* --- ANIMATIONS --- */
+
+@keyframes bg-shift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+@keyframes pulse-glow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* --- COMPONENTS --- */
+
+/* Glass Cards */
+.card,
+.glass-panel,
+.bg-gray-800 {
+    background: var(--bg-glass) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid var(--border-glass) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-lg) !important;
+    color: var(--text-main) !important;
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover,
+.glass-panel:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-glow), var(--shadow-lg) !important;
+}
+
+/* Sidebar */
+aside,
+.sidebar {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border-right: 1px solid rgba(0, 0, 0, 0.05) !important;
+    box-shadow: 5px 0 25px rgba(0, 0, 0, 0.02);
+    z-index: 50;
+    transition: all 0.3s ease;
+}
+
+/* Buttons */
+.btn-primary,
+button.bg-blue-600,
+a.bg-blue-600 {
+    background: var(--primary-gradient) !important;
+    border: none;
+    color: white !important;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary:hover,
+button.bg-blue-600:hover,
+a.bg-blue-600:hover {
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+}
+
+/* Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: #0f172a !important;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+p,
+span,
+div {
+    color: #334155;
+}
+
+/* Inputs */
+input,
+select,
+textarea {
+    background: white !important;
+    border: 2px solid #e2e8f0 !important;
+    color: #1e293b !important;
+    border-radius: 0.75rem !important;
+    padding: 0.75rem 1rem !important;
+    transition: all 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1) !important;
+    outline: none;
+    transform: translateY(-1px);
+}
+
+/* Links/Sidebar Items */
+nav a {
+    color: #64748b !important;
+    border-radius: 0.75rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+nav a:hover,
+nav a.active {
+    background: #eff6ff !important;
+    color: var(--primary) !important;
+    padding-left: 1.5rem !important;
+    /* Slide effect */
+}
+
+nav a i {
+    color: #94a3b8;
+    transition: color 0.3s ease;
+}
+
+nav a:hover i,
+nav a.active i {
+    color: var(--primary);
+}
+
+/* Specific overrides for Dark Mode tailwind classes */
+.bg-gray-900 {
+    background: transparent !important;
+}
+
+.bg-gray-800 {
+    background: white !important;
+}
+
+.text-white {
+    color: #1e293b !important;
+}
+
+.text-gray-300 {
+    color: #475569 !important;
+}
+
+.text-gray-400 {
+    color: #94a3b8 !important;
+}
+
+.border-gray-700 {
+    border-color: #e2e8f0 !important;
+}
+
+/* Status Badges */
+.badge-success {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+}
+
+.badge-warning {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+}
+
+.badge-danger {
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+}
+
+/* Staggered Animation Logic (simulated with :nth-child) */
+tr,
+.grid>div {
+    opacity: 0;
+    animation: fadeInUp 0.5s ease forwards;
+}
+
+tr:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+tr:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+tr:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+tr:nth-child(4) {
+    animation-delay: 0.25s;
+}
+
+tr:nth-child(5) {
+    animation-delay: 0.3s;
+}
+
+/* Logo Area */
+.logo-area {
+    animation: float 6s ease-in-out infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+/* --- BACKWARD COMPATIBILITY FOR SCI-FI CLASSES --- */
+.hud-card {
+    background: var(--bg-glass) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid var(--border-glass) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md) !important;
+    transition: transform 0.3s ease;
+}
+
+.hud-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg) !important;
+}
+
+.text-cyan {
+    color: var(--primary) !important;
+}
+
+.text-green {
+    color: var(--success) !important;
+}
+
+.text-red {
+    color: var(--danger) !important;
+}
+
+.text-purple {
+    color: #8b5cf6 !important;
+}
+
+.text-dim {
+    color: var(--text-muted) !important;
+}
+
+/* Invert Backgrounds */
+.bg-black {
+    background-color: white !important;
+    border-color: #e2e8f0 !important;
+    color: var(--text-main) !important;
+}
+
+.border-gray-800,
+.border-gray-900 {
+    border-color: #f1f5f9 !important;
+}
+
+.bg-gray-800 {
+    background-color: #f8fafc !important;
+    color: var(--text-main) !important;
+}
+
+/* Status Indicators */
+.bg-red {
+    background-color: var(--danger) !important;
+}
+
+.bg-cyan {
+    background-color: var(--primary) !important;
+}
+
+.bg-purple {
+    background-color: #8b5cf6 !important;
+}
+
+.bg-green {
+    background-color: var(--success) !important;
+}
+
+/* Table Hover */
+tr.hover\:bg-white:hover {
+    background-color: #eff6ff !important;
+    opacity: 1 !important;
+}
+
+/* Button override */
+.btn-sci-fi {
+    background: white !important;
+    border: 1px solid #e2e8f0 !important;
+    color: var(--text-main) !important;
+    border-radius: 6px;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-sci-fi:hover {
+    background: #f8fafc !important;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+}

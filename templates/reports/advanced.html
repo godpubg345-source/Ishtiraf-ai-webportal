@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}IshtirafAI - Advanced Analytics{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold mb-2">
+            <i class="fas fa-chart-pie mr-2 text-purple-500"></i>Advanced Analytics
+        </h1>
+        <p class="text-gray-500">Deep insights into diagnostic patterns and trends.</p>
+    </div>
+
+    <!-- Totals Row -->
+    <div class="dashboard-grid mb-8">
+        <div class="col-span-6">
+            <div class="stat-card info">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="value">{{ analytics.totals.diagnoses }}</div>
+                        <div class="label">Total Diagnoses</div>
+                    </div>
+                    <div class="icon info"><i class="fas fa-stethoscope"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-span-6">
+            <div class="stat-card success">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="value">{{ analytics.totals.patients }}</div>
+                        <div class="label">Total Patients</div>
+                    </div>
+                    <div class="icon success"><i class="fas fa-users"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="dashboard-grid mb-8">
+        <!-- Organ Distribution -->
+        <div class="col-span-4">
+            <div class="chart-card">
+                <h3><i class="fas fa-lungs mr-2"></i>Organ Distribution</h3>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="organChart"></canvas>
+                </div>
+                <div class="chart-legend mt-4">
+                    <div class="legend-item">
+                        <span class="legend-dot" style="background: #ef4444;"></span>
+                        Heart ({{ analytics.organ_distribution.heart }})
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot" style="background: #06b6d4;"></span>
+                        Lung ({{ analytics.organ_distribution.lung }})
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Risk Distribution -->
+        <div class="col-span-4">
+            <div class="chart-card">
+                <h3><i class="fas fa-exclamation-triangle mr-2"></i>Risk Distribution</h3>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="riskChart"></canvas>
+                </div>
+                <div class="chart-legend mt-4">
+                    <div class="legend-item">
+                        <span class="legend-dot" style="background: #10b981;"></span>
+                        Low ({{ analytics.risk_distribution.low }})
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot" style="background: #f97316;"></span>
+                        Medium ({{ analytics.risk_distribution.medium }})
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot" style="background: #ef4444;"></span>
+                        High ({{ analytics.risk_distribution.high }})
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Trend -->
+        <div class="col-span-4">
+            <div class="chart-card">
+                <h3><i class="fas fa-calendar-alt mr-2"></i>Monthly Trend</h3>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="dashboard-grid">
+        <div class="col-span-4">
+            <a href="{{ url_for('reports.weekly_report') }}" class="action-card block">
+                <i class="fas fa-chart-bar"></i>
+                <div class="font-bold">Weekly Report</div>
+                <div class="text-sm text-gray-500">View last 7 days</div>
+            </a>
+        </div>
+        <div class="col-span-4">
+            <a href="{{ url_for('reports.doctor_performance') }}" class="action-card block">
+                <i class="fas fa-user-md"></i>
+                <div class="font-bold">Doctor Performance</div>
+                <div class="text-sm text-gray-500">Accuracy & metrics</div>
+            </a>
+        </div>
+        <div class="col-span-4">
+            <a href="{{ url_for('analytics.dashboard') }}" class="action-card block">
+                <i class="fas fa-chart-line"></i>
+                <div class="font-bold">Basic Analytics</div>
+                <div class="text-sm text-gray-500">Simple stats view</div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Organ distribution doughnut
+        createDoughnutChart('organChart',
+            ['Heart', 'Lung', 'Other'],
+            [{{ analytics.organ_distribution.heart }}, {{ analytics.organ_distribution.lung }}, {{ analytics.organ_distribution.other }}],
+        ['#ef4444', '#06b6d4', '#8b5cf6']
+    );
+
+    // Risk distribution doughnut
+    createDoughnutChart('riskChart',
+        ['Low Risk', 'Medium Risk', 'High Risk'],
+        [{{ analytics.risk_distribution.low }}, {{ analytics.risk_distribution.medium }}, {{ analytics.risk_distribution.high }}],
+        ['#10b981', '#f97316', '#ef4444']
+    );
+
+    // Monthly trend bar chart
+    const monthlyData = {{ analytics.monthly_trend | tojson }};
+    const months = Object.keys(monthlyData).sort().slice(-6);
+    const counts = months.map(m => monthlyData[m] || 0);
+
+    const ctx = document.getElementById('monthlyChart');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: [{
+                label: 'Diagnoses',
+                data: counts,
+                backgroundColor: '#8b5cf6',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } }
+        }
+    });
+});
+</script>
+{% endblock %}
