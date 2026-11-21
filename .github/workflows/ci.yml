@@ -1,0 +1,44 @@
+name: portal-ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: "1"
+      TF_CPP_MIN_LOG_LEVEL: "3"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ai.txt
+
+      - name: Install
+        # The AI runtime comes from requirements-ai.txt (LiteRT on Linux), so the full
+        # tensorflow line in requirements.txt is skipped here.
+        run: |
+          grep -vxE 'tensorflow' requirements.txt > /tmp/requirements-ci.txt
+          python -m pip install --upgrade pip
+          pip install -r /tmp/requirements-ci.txt -r requirements-ai.txt pytest hypothesis ruff
+
+      - name: Lint (undefined names, redefinitions)
+        run: ruff check --select F821,F811,F823 --output-format github .
+
+      - name: Tests
+        run: python -m pytest -q -p no:cacheprovider tests
