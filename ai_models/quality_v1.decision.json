@@ -1,0 +1,18 @@
+{
+  "version": "quality_v1",
+  "model_file": "quality_v1.tflite",
+  "model_sha256": "cc0dbfb2466433d3f6176773681f98d2be45d3b5ea0fe3a2a04484503ea92be6",
+  "window_cutoff": 0.78,
+  "min_good_fraction": 0.5,
+  "min_full_windows": 1,
+  "created": "2026-11-21",
+  "kind": "cnn",
+  "score": "P(good) per full 5 s window from the TFLite model; padded last window does not vote",
+  "rule": "ok if windows with score >= window_cutoff are at least min_good_fraction of full windows and there are at least min_full_windows full windows",
+  "chosen_on": "val split (seed 2026), clean rejection <= 0.02",
+  "test": {
+    "auc": 0.9999961032053084,
+    "clean_rejected": 0.0107,
+    "corrupted_rejected": 1.0
+  }
+}

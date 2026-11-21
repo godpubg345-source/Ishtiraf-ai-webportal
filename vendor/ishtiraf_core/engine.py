@@ -8,6 +8,9 @@ when the model or the recording is not usable.
 Cut-offs come from `<model>.decision.json` (P1.5), which is tied to the model by sha256:
 REFER (ABNORMAL) / UNSURE / NO REFER (NORMAL). A fixed `threshold=` gives the old two-way
 output and is meant for evaluation only.
+
+Before the heart model runs, the signal quality gate (P1.2, `quality_v1.tflite` + its decision
+file, next to the heart model) checks the recording; a poor one gives NO RESULT: record again.
 """
 from __future__ import annotations
 
@@ -18,11 +21,14 @@ import numpy as np
 
 from . import decision as dc
 from . import preprocessing as pp
+from . import quality as qa
 
 MODEL_VERSION = 'heart_attention_v4'
 NORMAL, ABNORMAL, UNSURE, NO_RESULT = 'NORMAL', 'ABNORMAL', 'UNSURE', 'NO RESULT'
 _STATUS = {dc.REFER: ABNORMAL, dc.UNSURE: UNSURE, dc.NO_REFER: NORMAL}
 MIN_SECONDS = 2  # below this the recording holds too little of a cardiac cycle
+QUALITY_MODEL = 'quality_v1.tflite'
+POOR_QUALITY_REASON = 'poor recording quality - record again'
 
 
 def _interpreter_class():
@@ -48,6 +54,7 @@ class HeartResult:
     n_windows: int
     reason: str = ''
     decision: str | None = None  # REFER / UNSURE / NO REFER from the decision file
+    quality: float | None = None   # mean P(good) from the quality gate, 0..1
 
     @property
     def score(self) -> int | None:
@@ -56,10 +63,11 @@ class HeartResult:
 
 
 class HeartEngine:
-    def __init__(self, model_path, threshold: float | None = None, decision_path=None):
+    def __init__(self, model_path, threshold: float | None = None, decision_path=None, quality_model=None):
         self.model_path = Path(model_path)
         self.threshold = threshold
         self.decision: dc.Decision | None = None
+        self.quality: qa.QualityChecker | None = None
         self.version = MODEL_VERSION
         self.error = None
         self._interp = None
@@ -73,6 +81,10 @@ class HeartEngine:
                     raise FileNotFoundError(f'decision file not found: {dpath.name}')
                 self.decision = dc.Decision.load(dpath)
                 self.decision.check_model(self.model_path)
+                qpath = Path(quality_model) if quality_model else self.model_path.with_name(QUALITY_MODEL)
+                if not qpath.exists():
+                    raise FileNotFoundError(f'quality model not found: {qpath.name}')
+                self.quality = qa.QualityChecker.from_files(qpath)
             self._interp = _interpreter_class()(model_path=str(self.model_path))
             self._interp.allocate_tensors()
             self._in = self._interp.get_input_details()[0]
@@ -94,6 +106,13 @@ class HeartEngine:
             return HeartResult(NO_RESULT, None, 0, f'recording shorter than {MIN_SECONDS} s')
         if not np.isfinite(audio).all():
             return HeartResult(NO_RESULT, None, 0, 'recording contains invalid samples')
+        q = None
+        if self.quality is not None:
+            qr = self.quality.assess(audio, sr)
+            q = qr.score
+            if not qr.ok:
+                detail = 'too short for the quality check' if qr.reason == qa.TOO_SHORT else f'quality {q:.2f}'
+                return HeartResult(NO_RESULT, None, 0, f'{POOR_QUALITY_REASON} ({detail})', quality=q)
         x = pp.model_input(audio, sr)
         probs = []
         for window in x:
@@ -104,4 +123,4 @@ class HeartEngine:
         if self.decision is None:
             return HeartResult(ABNORMAL if prob > self.threshold else NORMAL, prob, len(probs))
         d = self.decision.classify(prob)
-        return HeartResult(_STATUS[d], prob, len(probs), decision=d)
+        return HeartResult(_STATUS[d], prob, len(probs), decision=d, quality=q)
