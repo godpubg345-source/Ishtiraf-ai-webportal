@@ -11,11 +11,13 @@ from werkzeug.security import check_password_hash
 from datetime import datetime, timedelta
 import jwt
 import os
+import secrets
 
 mobile_api = Blueprint('mobile_api', __name__, url_prefix='/api/v1')
 
 # JWT Config
-JWT_SECRET = os.environ.get('JWT_SECRET', 'ishtirafai-mobile-secret-2026')
+# Never hardcode: production requires JWT_SECRET (see config.get_config); dev gets a per-process random key
+JWT_SECRET = os.environ.get('JWT_SECRET') or secrets.token_hex(32)
 JWT_EXPIRY_HOURS = 24
 
 

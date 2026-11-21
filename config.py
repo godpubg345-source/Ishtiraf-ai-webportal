@@ -73,4 +73,6 @@ def get_config():
     env = os.environ.get('FLASK_ENV', 'development')
     if env == 'production' and not os.environ.get('SECRET_KEY'):
         raise RuntimeError('SECRET_KEY environment variable is required in production')
+    if env == 'production' and not os.environ.get('JWT_SECRET'):
+        raise RuntimeError('JWT_SECRET environment variable is required in production')
     return config.get(env, config['default'])
