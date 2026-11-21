@@ -8,6 +8,10 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Point the app at an in-memory DB *before* it is imported: Flask-SQLAlchemy binds
+# its engine at import time, so changing the URI later would hit the real ishtiraf_ai.db
+os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+
 from app import app, db
 from models.user import User
 

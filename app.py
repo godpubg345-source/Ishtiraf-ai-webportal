@@ -3,6 +3,14 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_login import LoginManager, login_required, current_user
 import json
+import sys
+
+# Emoji in startup prints crash Windows when output is redirected (cp1252); never let logging kill the app
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors='replace')
+    except Exception:
+        pass
 import zlib
 import base64
 import logging
