@@ -85,17 +85,26 @@
                             The AI model analyzed <strong>{{ diag.path_used.split('/')[-1] }}</strong> and detected
                             patterns consistent with
                             <strong
-                                class="{{ 'text-red-600' if 'ABNORMAL' in diag.diagnosis_result else 'text-green-600' }}">
+                                class="{{ 'text-red-600' if ('ABNORMAL' in (diag.diagnosis_result or '') and 'NO ABNORMALITY' not in diag.diagnosis_result) else 'text-green-600' }}">
                                 {{ diag.diagnosis_result.split(':')[-1] }}
                             </strong>.
                         </p>
                         <div class="mt-3 flex gap-2">
+                            {% if diag.confidence is not none %}
                             <span class="text-xs bg-white border border-gray-200 px-2 py-1 rounded text-gray-600">
                                 Confidence: <strong>{{ diag.confidence }}%</strong>
                             </span>
+                            {% endif %}
+                            {% if diag.rms_value is not none %}
                             <span class="text-xs bg-white border border-gray-200 px-2 py-1 rounded text-gray-600">
-                                Signal Quality: <strong>High (RMS {{ "%.2f"|format(diag.rms_value) }})</strong>
+                                RMS: <strong>{{ "%.2f"|format(diag.rms_value) }}</strong>
                             </span>
+                            {% endif %}
+                            {% if diag.path_used %}
+                            <span class="text-xs bg-white border border-gray-200 px-2 py-1 rounded text-gray-600">
+                                Model: <strong>{{ diag.path_used }}</strong>
+                            </span>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

@@ -38,6 +38,8 @@ from routes.reports import reports_bp
 from utils.rbac import require_permission, require_role, rbac_context_processor
 from utils.audit import log_audit, init_audit_logging, audit_action
 from utils.ai_expert import AIExpertSystem
+from utils import device_registry
+from markupsafe import escape
 from utils.notifications import init_notifications, notifications
 from utils.rate_limiter import init_rate_limiter, rate_limiter, limit_auth, limit_api
 
@@ -403,110 +405,27 @@ def scan_qr_image():
 @app.route('/scan')
 @login_required  # patient data: never public
 def scan_qr():
-    # Support both ?p= (new minimal) and ?payload= (legacy)
+    """Show a QR result only if a registered device signed it (P0.7). No unsigned fallback."""
     payload = request.args.get('p') or request.args.get('payload')
     if not payload:
-        # Redirect to camera scanner if no payload
         return redirect(url_for('qr_scanner'))
-    
-    # FIX: Handle case where user pastes FULL URL instead of just payload
-    if payload.startswith('http://') or payload.startswith('https://'):
-        try:
-            from urllib.parse import urlparse, parse_qs
-            parsed = urlparse(payload)
-            query_params = parse_qs(parsed.query)
-            # Check both ?p= and ?payload=
-            if 'p' in query_params:
-                payload = query_params['p'][0]
-            elif 'payload' in query_params:
-                payload = query_params['payload'][0]
-            print(f"📦 Extracted payload from URL: {len(payload)} chars")
-        except Exception as e:
-            print(f"URL parse error: {e}")
-
-        
     try:
-        # Decrypt Payload
-        encrypted_bytes = base64.urlsafe_b64decode(payload)
-        
-        try:
-            # 1. Try Decrypting (Old Secure Mode)
-            decrypted_bytes = cipher.decrypt(encrypted_bytes)
-            
-            # Try decoding as raw JSON first (New Minimal Format - No Zlib)
-            try:
-                json_str = decrypted_bytes.decode("utf-8")
-                raw_data = json.loads(json_str)
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                # Fallback to Zlib decompress (Old Format)
-                json_str = zlib.decompress(decrypted_bytes).decode("utf-8")
-                raw_data = json.loads(json_str)
-                
-        except Exception:
-            # 2. Fallback to Plain Base64 (New Lite Mode v3.2)
-            # This handles unencrypted QRs for better scannability
-            print("⚠️ Decryption failed, attempting Lite Mode decode...")
-            try:
-                json_str = encrypted_bytes.decode("utf-8")
-                raw_data = json.loads(json_str)
-                print("✅ Lite Mode (Unencrypted) Payload Detected")
-            except Exception as e_lite:
-                print(f"Login failed: {e_lite}")
-                raise Exception("Invalid QR Payload")
-
-        print(f"📦 Decoded payload: {raw_data}")
-        
-        # Check if it's a minimal payload (new format) or full payload (old format)
-        if 's' in raw_data and len(raw_data) <= 10:
-            # MINIMAL format: expand to full format for template
-            status_map = {'N': 'Normal', 'A': 'Abnormal'}
-            organ_map = {'H': 'Heart', 'L': 'Lung'}
-            
-            # Get diagnosis and status
-            diagnosis = raw_data.get('d', 'Unknown')
-            status = raw_data.get('s', 'N')
-            risk = raw_data.get('r', 0)
-            organ = organ_map.get(raw_data.get('o', 'H'), 'Heart')
-            
-            # GENERATE AI REPORT (New v3.3 Feature)
-            ai_report = AIExpertSystem.generate_report(diagnosis, status, risk, organ)
-            findings = [] # Legacy findings list (kept for back-compat if needed)
-
-            # Generate recommendation
-            if risk >= 7:
-                recommendation = 'URGENT: Consult cardiologist immediately'
-            elif status == 'A':
-                recommendation = 'Schedule cardiology consultation soon'
-            else:
-                recommendation = 'Routine checkup recommended'
-
-            diagnosis_data = {
-                'diagnosis': diagnosis,
-                'status': status_map.get(status, 'Unknown'),
-                'risk_score': risk,
-                'confidence': raw_data.get('c', 0),
-                'organ': organ,
-                'timestamp': raw_data.get('t', 'N/A'),
-                'device_id': 'IshtirafAI-Steth',
-                'findings': findings,
-                'advanced_metrics': ai_report['acoustic_metrics'],
-                'ai_explanation': ai_report['explanation'],
-                'ai_advice': ai_report['advice'],
-                'recommendation': recommendation
-            }
-        else:
-            # Old full format
-            diagnosis_data = raw_data
-            # Ensure findings and metrics exist for old payloads too
-            if 'findings' not in diagnosis_data: diagnosis_data['findings'] = []
-            if 'advanced_metrics' not in diagnosis_data: diagnosis_data['advanced_metrics'] = {}
-        
-        return render_template('public_scan.html', diagnosis=diagnosis_data, payload=payload)
-    except Exception as e:
-        print(f"Scan Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return f"Error reading QR Code: {str(e)}", 400
+        res = device_registry.verify_qr(payload)
+    except device_registry.InvalidToken as e:
+        logger.warning(f"Rejected QR: {e}")
+        return (f"<h2>QR result rejected</h2><p>{escape(str(e))}</p>"
+                f"<p><a href='{url_for('qr_scanner')}'>Scan again</a></p>"), 400
+    d = device_registry.describe(res)
+    explanation, recommendation = device_registry.advice(d)
+    view = {
+        'diagnosis': d['diagnosis'], 'status': d['status'], 'organ': 'Heart',
+        'score': d['score'], 'risk_score': d['risk_score'], 'timestamp': d['recorded_at'],
+        'device_id': d['device_id'], 'findings': [],
+        'ai_explanation': explanation, 'recommendation': recommendation,
+        'advanced_metrics': device_registry.facts(d),
+        'ai_advice': device_registry.CAVEATS,
+    }
+    return render_template('public_scan.html', diagnosis=view, payload=device_registry.extract_token(payload))
 
 
 # --- V3.0 High-Capacity Optical Transfer Routes ---
@@ -641,101 +560,65 @@ def save_to_account():
 @app.route('/save-from-qr', methods=['POST'])
 @login_required  # patient data: never public
 def save_from_qr():
-    """
-    Saves patient info (from form) + diagnosis (from QR payload).
-    This is the main flow: Pi5 scan → QR → Phone scan → Portal form → Save
+    """Save patient info (form) + the signed device result (QR). Pi -> QR -> portal -> save.
+
+    The token is verified again here; the diagnosis id is QR-<device>-<counter>, so the same
+    QR can be saved only once.
     """
     from flask import flash
-    
-    payload = request.form.get('payload')
+    from sqlalchemy.exc import IntegrityError
+
+    payload = request.form.get('payload', '')
     name = request.form.get('name', '').strip()
     age = request.form.get('age', 0)
     gender = request.form.get('gender', '')
     contact = request.form.get('contact', '').strip()
-    
+
     if not name or not age or not gender:
         flash('Name, Age, and Gender are required!', 'error')
         return redirect(request.referrer or url_for('dashboard'))
-    
+
     try:
-        # Decrypt/Decode Payload (Hybrid Mode)
-        raw_data = {}
-        try:
-            # 1. Try Legacy Encrypted Format
-            encrypted_bytes = base64.urlsafe_b64decode(payload)
-            compressed_bytes = cipher.decrypt(encrypted_bytes)
-            json_str = zlib.decompress(compressed_bytes).decode("utf-8")
-            raw_data = json.loads(json_str)
-        except Exception:
-            # 2. Fallback to Lite Mode (Base64 JSON)
-            try:
-                # Add padding if needed
-                missing_padding = len(payload) % 4
-                if missing_padding:
-                    payload += '=' * (4 - missing_padding)
-                json_str = base64.urlsafe_b64decode(payload).decode("utf-8")
-                raw_data = json.loads(json_str)
-            except Exception as e:
-                raise Exception(f"Invalid QR Payload: {e}")
+        res = device_registry.verify_qr(payload)
+    except device_registry.InvalidToken as e:
+        logger.warning(f"Rejected QR save: {e}")
+        flash(f'QR result rejected: {e}', 'error')
+        return redirect(url_for('dashboard'))
+    d = device_registry.describe(res)
+    if d['status'] == 'NO RESULT':
+        flash('This QR has no result to save. Record again on the device.', 'error')
+        return redirect(url_for('dashboard'))
+    existing = Diagnosis.query.filter_by(diagnosis_id=d['diagnosis_id']).first()
+    if existing:
+        flash('This result was already saved.', 'info')
+        return redirect(url_for('patient_detail', id=existing.patient_id))
 
-        # Expand Keys if Lite Mode
-        if 'd' in raw_data:
-            organ_map = {'H': 'Heart', 'L': 'Lung'}
-            status_map = {'N': 'Normal', 'A': 'Abnormal'}
-            data = {
-                'diagnosis': raw_data.get('d', 'Unknown'),
-                'risk_score': raw_data.get('r', 0),
-                'confidence': raw_data.get('c', 0),
-                'timestamp': raw_data.get('t', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-                'device_id': 'IshtirafAI-Steth',
-                'recommendation': 'Generated via AI Expert System',
-                'symptoms': {},
-                'patient_mode': 'Adult', 
-                'organ_mode': organ_map.get(raw_data.get('o'), 'Heart')
-            }
-        else:
-            data = raw_data
-
-        # Find or Create Patient
+    try:
         patient = Patient.query.filter_by(name=name, contact=contact).first()
         if not patient:
-            patient = Patient(
-                name=name,
-                age=int(age),
-                gender=gender,
-                contact=contact
-            )
+            patient = Patient(name=name, age=int(age), gender=gender, contact=contact)
             db.session.add(patient)
-            db.session.commit()
-        
-        # Create Diagnosis linked to patient
-        new_diagnosis = Diagnosis(
-            diagnosis_id=data.get('diagnosis_id', f"DIAG-{int(datetime.now().timestamp())}"),
-            patient_id=patient.id,
-            timestamp=datetime.strptime(data.get('timestamp', datetime.now().strftime('%Y-%m-%d %H:%M:%S')), '%Y-%m-%d %H:%M:%S'),
-            device_id=data.get('device_id', 'RPI5-TOUCH'),
-            diagnosis_result=data.get('diagnosis', 'Unknown'),
-            confidence=float(data.get('confidence', 0)),
-            risk_score=float(data.get('risk_score', 0)),
-            recommendation=data.get('recommendation', 'Consult physician'),
-            path_used=data.get('path_used', 'Unknown'),
-            rms_value=float(data.get('rms_value', 0)),
-            sym_chest_pain=data.get('symptoms', {}).get('chest_pain', False),
-            sym_shortness=data.get('symptoms', {}).get('shortness', False),
-            sym_history=data.get('symptoms', {}).get('history', False),
-            patient_mode=data.get('patient_mode', 'Adult'),
-            organ_mode=data.get('organ_mode', 'Heart')
-        )
-        db.session.add(new_diagnosis)
+            db.session.flush()
+        _, recommendation = device_registry.advice(d)
+        db.session.add(Diagnosis(
+            diagnosis_id=d['diagnosis_id'], patient_id=patient.id,
+            timestamp=datetime.strptime(d['recorded_at'], '%Y-%m-%d %H:%M:%S'),
+            device_id=d['device_id'], diagnosis_result=d['diagnosis'],
+            confidence=None,  # the model score is not a calibrated confidence
+            risk_score=d['risk_score'], recommendation=recommendation,
+            path_used=d['model'], rms_value=None, organ_mode='Heart'))
         db.session.commit()
-        
-        flash(f'✅ Record saved for {name}!', 'success')
-        return redirect(url_for('patient_detail', id=patient.id))
-        
-    except Exception as e:
-        logger.error(f"Save from QR Error: {e}")
-        flash(f'Error: {str(e)}', 'error')
+    except IntegrityError:
+        db.session.rollback()
+        flash('This result was already saved.', 'info')
         return redirect(url_for('dashboard'))
+    except (ValueError, TypeError) as e:
+        db.session.rollback()
+        flash(f'Error: {e}', 'error')
+        return redirect(url_for('dashboard'))
+
+    flash(f'Record saved for {name}.', 'success')
+    return redirect(url_for('patient_detail', id=patient.id))
 
 
 # --- Error Handlers ---

@@ -363,55 +363,25 @@ def get_diagnosis(diagnosis_id):
 @mobile_api.route('/scan', methods=['POST'])
 @token_required
 def mobile_scan():
-    """Process QR payload from mobile scanner"""
-    import base64
-    import json
-    
-    data = request.get_json()
-    payload = data.get('payload', '')
-    
+    """Verify a signed QR result from a registered device (P0.7)."""
+    from utils import device_registry
+    payload = (request.get_json(silent=True) or {}).get('payload', '')
     if not payload:
         return jsonify({'error': 'No payload provided'}), 400
-    
     try:
-        # Decode base64 payload (Lite Mode)
-        missing_padding = len(payload) % 4
-        if missing_padding:
-            payload += '=' * (4 - missing_padding)
-        
-        json_str = base64.urlsafe_b64decode(payload).decode('utf-8')
-        raw_data = json.loads(json_str)
-        
-        # Expand Lite Mode keys
-        organ_map = {'H': 'Heart', 'L': 'Lung'}
-        status_map = {'N': 'Normal', 'A': 'Abnormal'}
-        
-        expanded = {
-            'diagnosis': raw_data.get('d', 'Unknown'),
-            'status': status_map.get(raw_data.get('s'), 'Unknown'),
-            'risk_score': raw_data.get('r', 0),
-            'confidence': raw_data.get('c', 0),
-            'organ': organ_map.get(raw_data.get('o'), 'Heart'),
-            'timestamp': raw_data.get('t', 'N/A')
-        }
-        
-        # Generate AI report
-        from utils.ai_expert import AIExpertSystem
-        ai_report = AIExpertSystem.generate_report(
-            expanded['diagnosis'],
-            raw_data.get('s', 'N'),
-            expanded['risk_score'],
-            expanded['organ']
-        )
-        
-        return jsonify({
-            'success': True,
-            'data': expanded,
-            'ai_report': ai_report
-        })
-        
-    except Exception as e:
-        return jsonify({'error': f'Invalid QR payload: {str(e)}'}), 400
+        d = device_registry.describe(device_registry.verify_qr(payload))
+    except device_registry.InvalidToken as e:
+        return jsonify({'error': f'QR result rejected: {e}'}), 400
+    explanation, recommendation = device_registry.advice(d)
+    return jsonify({
+        'success': True,
+        'data': {'diagnosis': d['diagnosis'], 'status': d['status'], 'score': d['score'],
+                 'risk_score': d['risk_score'], 'confidence': None, 'organ': 'Heart',
+                 'timestamp': d['recorded_at'], 'device_id': d['device_id'], 'model': d['model'],
+                 'n_windows': d['n_windows'], 'verified': True},
+        'ai_report': {'explanation': explanation, 'advice': device_registry.CAVEATS + [recommendation],
+                      'acoustic_metrics': device_registry.facts(d)},
+    })
 
 
 # ============ STATS ENDPOINT ============
