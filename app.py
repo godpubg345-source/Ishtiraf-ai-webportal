@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_login import LoginManager, login_required, current_user
-import json
 import sys
 
 # Emoji in startup prints crash Windows when output is redirected (cp1252); never let logging kill the app
@@ -11,11 +10,8 @@ for _stream in (sys.stdout, sys.stderr):
         _stream.reconfigure(errors='replace')
     except Exception:
         pass
-import zlib
-import base64
 import logging
 import uuid
-from cryptography.fernet import Fernet
 import os
 from datetime import datetime
 from utils.pdf_generator import generate_patient_pdf
@@ -117,20 +113,11 @@ mail = Mail(app)
 # Make mail accessible to blueprints
 app.mail = mail
 
-# Encryption Key
-try:
-    with open(os.path.join(BASE_DIR, '..', 'Model_Training', '2_App_Core', 'secret.key'), 'rb') as key_file:
-        ENCRYPTION_KEY = key_file.read()
-    cipher = Fernet(ENCRYPTION_KEY)
-    print("Encryption Key Loaded Successfully.")
-except Exception as e:
-    print(f"Warning: Could not load encryption key: {e}")
-    ENCRYPTION_KEY = None
-
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html', user=current_user)
+    # The old scan page used the retired Fernet QR; the signed flow starts at /qr-scanner.
+    return redirect(url_for('qr_scanner'))
 
 @app.route('/dashboard')
 @login_required
@@ -244,66 +231,6 @@ def analyze_audio():
     status, body = process_audio_chunk(data['audio'], data.get('sample_rate', 2000))
     return jsonify(body), status
 
-
-@app.route('/api/decrypt_qr', methods=['POST'])
-@login_required  # patient data: never public
-def decrypt_qr():
-    if not ENCRYPTION_KEY:
-        return jsonify({"error": "Encryption key not configured"}), 500
-    try:
-        data = request.json
-        encrypted_payload = data.get('payload')
-        encrypted_bytes = base64.urlsafe_b64decode(encrypted_payload)
-        compressed_bytes = cipher.decrypt(encrypted_bytes)
-        json_str = zlib.decompress(compressed_bytes).decode("utf-8")
-        diagnosis_data = json.loads(json_str)
-        return jsonify({"status": "success", "data": diagnosis_data})
-    except Exception as e:
-        print(f"Decryption Error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 400
-
-@app.route('/api/save_patient', methods=['POST'])
-@login_required  # patient data: never public
-def save_patient():
-    try:
-        data = request.json
-        patient_data = data.get('patient')
-        diagnosis_data = data.get('diagnosis')
-        
-        patient = Patient.query.filter_by(name=patient_data['name']).first()
-        if not patient:
-            patient = Patient(
-                name=patient_data['name'],
-                age=int(patient_data['age']),
-                gender=patient_data['gender'],
-                contact=patient_data.get('contact', '')
-            )
-            db.session.add(patient)
-            db.session.commit()
-            
-        new_diagnosis = Diagnosis(
-            diagnosis_id=diagnosis_data['diagnosis_id'],
-            patient_id=patient.id,
-            timestamp=datetime.strptime(diagnosis_data['timestamp'], '%Y-%m-%d %H:%M:%S'),
-            device_id=diagnosis_data['device_id'],
-            diagnosis_result=diagnosis_data['diagnosis'],
-            confidence=float(diagnosis_data['confidence']),
-            risk_score=float(diagnosis_data['risk_score']),
-            recommendation=diagnosis_data['recommendation'],
-            path_used=diagnosis_data['path_used'],
-            rms_value=float(diagnosis_data['rms_value']),
-            sym_chest_pain=diagnosis_data['symptoms']['chest_pain'],
-            sym_shortness=diagnosis_data['symptoms']['shortness'],
-            sym_history=diagnosis_data['symptoms']['history'],
-            patient_mode=diagnosis_data['patient_mode'],
-            organ_mode=diagnosis_data['organ_mode']
-        )
-        db.session.add(new_diagnosis)
-        db.session.commit()
-        return jsonify({"status": "success", "message": "Record Saved Successfully"})
-    except Exception as e:
-        print(f"Save Error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
 
 # --- Web Portal 2.0 Routes ---
 
@@ -426,135 +353,6 @@ def scan_qr():
         'ai_advice': device_registry.CAVEATS,
     }
     return render_template('public_scan.html', diagnosis=view, payload=device_registry.extract_token(payload))
-
-
-# --- V3.0 High-Capacity Optical Transfer Routes ---
-
-@app.route('/scan/v3')
-@login_required  # patient data: never public
-def scan_v3():
-    """V3.0: Decode JAB Code with neural audio."""
-    return render_template('scan_v3.html')
-
-
-@app.route('/api/decode_v3', methods=['POST'])
-@login_required  # patient data: never public
-def api_decode_v3():
-    """API: Decode V3.0 payload (base64 or raw bytes)."""
-    try:
-        from utils.v3_decoder import get_decoder, V3_DECODE_AVAILABLE
-        
-        if not V3_DECODE_AVAILABLE:
-            return jsonify({"error": "V3.0 decoder not available on server"}), 501
-            
-        data = request.get_json()
-        payload_b64 = data.get('payload')
-        
-        if not payload_b64:
-            return jsonify({"error": "No payload provided"}), 400
-            
-        decoder = get_decoder()
-        result = decoder.decode_from_base64(payload_b64)
-        
-        if "error" in result:
-            return jsonify(result), 400
-            
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"V3 Decode Error: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/playback_audio', methods=['POST'])
-@login_required  # patient data: never public
-def api_playback_audio():
-    """API: Stream reconstructed audio as WAV."""
-    try:
-        from utils.v3_decoder import get_decoder, V3_DECODE_AVAILABLE
-        import numpy as np
-        import io
-        from scipy.io import wavfile
-        
-        if not V3_DECODE_AVAILABLE:
-            return jsonify({"error": "V3.0 decoder not available"}), 501
-            
-        data = request.get_json()
-        audio_samples = data.get('audio')
-        sample_rate = data.get('sample_rate', 4000)
-        
-        if not audio_samples:
-            return jsonify({"error": "No audio data"}), 400
-            
-        # Convert to numpy and create WAV
-        audio = np.array(audio_samples, dtype=np.float32)
-        audio_int16 = (audio * 32767).astype(np.int16)
-        
-        wav_buffer = io.BytesIO()
-        wavfile.write(wav_buffer, sample_rate, audio_int16)
-        wav_buffer.seek(0)
-        
-        return send_file(
-            wav_buffer,
-            mimetype='audio/wav',
-            as_attachment=False,
-            download_name='reconstructed_audio.wav'
-        )
-        
-    except Exception as e:
-        logger.error(f"Playback Error: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/save_to_account', methods=['POST'])
-@login_required
-def save_to_account():
-    payload = request.form.get('payload')
-    try:
-        # Decrypt again to ensure security
-        encrypted_bytes = base64.urlsafe_b64decode(payload)
-        compressed_bytes = cipher.decrypt(encrypted_bytes)
-        json_str = zlib.decompress(compressed_bytes).decode("utf-8")
-        data = json.loads(json_str)
-        
-        # Create Patient Record (Self)
-        patient = Patient.query.filter_by(name=current_user.name).first()
-        if not patient:
-            patient = Patient(
-                name=current_user.name,
-                age=30, # Placeholder, should ask user
-                gender="Unknown",
-                contact=current_user.email
-            )
-            db.session.add(patient)
-            db.session.commit()
-            
-        # Create Diagnosis
-        new_diagnosis = Diagnosis(
-            diagnosis_id=data.get('diagnosis_id', f"DIAG-{int(datetime.now().timestamp())}"),
-            patient_id=patient.id,
-            timestamp=datetime.strptime(data.get('timestamp', datetime.now().strftime('%Y-%m-%d %H:%M:%S')), '%Y-%m-%d %H:%M:%S'),
-            device_id=data.get('device_id', 'UNKNOWN'),
-            diagnosis_result=data.get('diagnosis'),
-            confidence=float(data.get('confidence', 0)),
-            risk_score=float(data.get('risk_score', 0)),
-            recommendation=data.get('recommendation', ''),
-            path_used=data.get('path_used', 'Unknown'),
-            rms_value=float(data.get('rms_value', 0)),
-            sym_chest_pain=data.get('symptoms', {}).get('chest_pain', False),
-            sym_shortness=data.get('symptoms', {}).get('shortness', False),
-            sym_history=data.get('symptoms', {}).get('history', False),
-            patient_mode=data.get('patient_mode', 'Adult'),
-            organ_mode=data.get('organ_mode', 'Raw')
-        )
-        db.session.add(new_diagnosis)
-        db.session.commit()
-        
-        return redirect(url_for('dashboard'))
-        
-    except Exception as e:
-        logger.error(f"Save Error: {e}")
-        return f"Error saving record: {str(e)}", 400
 
 
 @app.route('/save-from-qr', methods=['POST'])

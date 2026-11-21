@@ -17,10 +17,14 @@ needs_runtime = pytest.mark.skipif(not has_runtime, reason='no TFLite runtime in
 needs_data = pytest.mark.skipif(not RAW.exists(), reason='PhysioNet data not on this machine')
 
 PATIENT_DATA_ROUTES = [
-    ('get', '/qr-scanner'), ('get', '/scan?p=eyJzIjoiTiJ9'), ('get', '/scan/v3'),
-    ('post', '/api/decrypt_qr'), ('post', '/api/save_patient'), ('post', '/api/scan_qr_image'),
-    ('post', '/api/decode_v3'), ('post', '/api/playback_audio'), ('post', '/save-from-qr'),
-    ('post', '/api/analyze-audio'),
+    ('get', '/'), ('get', '/qr-scanner'), ('get', '/scan?p=eyJzIjoiTiJ9'),
+    ('post', '/api/scan_qr_image'), ('post', '/save-from-qr'), ('post', '/api/analyze-audio'),
+]
+
+# Track D: the signed QR (P0.7) replaced these Fernet / plain / V3 JAB paths. They must stay gone.
+REMOVED_LEGACY_ROUTES = [
+    ('post', '/api/decrypt_qr'), ('post', '/api/save_patient'), ('post', '/save_to_account'),
+    ('get', '/scan/v3'), ('post', '/api/decode_v3'), ('post', '/api/playback_audio'),
 ]
 
 
@@ -34,6 +38,17 @@ def test_patient_data_routes_require_login(client, method, url):
     assert resp.status_code in (301, 302, 401), f'{url} answered {resp.status_code} without login'
     if resp.status_code in (301, 302):
         assert '/auth/login' in resp.headers['Location']
+
+
+@pytest.mark.parametrize('method,url', REMOVED_LEGACY_ROUTES)
+def test_removed_legacy_qr_routes_are_404(authenticated_client, method, url):
+    resp = getattr(authenticated_client, method)(url, json={} if method == 'post' else None)
+    assert resp.status_code == 404, f'{url} answered {resp.status_code}; legacy QR route is back'
+
+
+def test_home_sends_to_signed_qr_scanner(authenticated_client):
+    resp = authenticated_client.get('/')
+    assert resp.status_code == 302 and resp.headers['Location'].endswith('/qr-scanner')
 
 
 @needs_runtime
