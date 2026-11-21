@@ -7,7 +7,7 @@ import sqlite3
 import os
 
 # Use absolute path
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # portal root (script lives in scripts/)
 DB_PATH = os.path.join(SCRIPT_DIR, "ishtiraf_ai.db")
 
 print("\n" + "="*50)
@@ -19,7 +19,7 @@ if not os.path.exists(DB_PATH):
     print()
     print("Run this command first:")
     print("cd c:/Users/Omen/OneDrive/Desktop/IshtirafAI_Project/IshtirafAI_WebPortal")
-    print("& ../.venv310/Scripts/python.exe quick_fix.py")
+    print("& ../.venv-portal/Scripts/python.exe quick_fix.py")
     exit(1)
 
 conn = sqlite3.connect(DB_PATH)

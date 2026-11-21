@@ -8,7 +8,7 @@ import shutil
 import sys
 
 # Set working directory
-PORTAL_DIR = os.path.abspath(os.path.dirname(__file__))
+PORTAL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))  # portal root (script lives in scripts/)
 os.chdir(PORTAL_DIR)
 
 print("=" * 60)
@@ -70,7 +70,7 @@ print("=" * 60)
 print()
 print("🚀 NEXT STEPS:")
 print("   1. Run Flask app:")
-print("      & ../.venv310/Scripts/python.exe app.py")
+print("      & ../.venv-portal/Scripts/python.exe app.py")
 print()
 print("   2. Register first user at:")
 print("      http://127.0.0.1:5000/auth/register")
