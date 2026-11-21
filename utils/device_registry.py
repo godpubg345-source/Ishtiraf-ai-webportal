@@ -18,8 +18,9 @@ sys.path.insert(0, str(_PORTAL / 'vendor'))
 
 from ishtiraf_core.signing import InvalidToken, VerifiedResult, verify_result  # noqa: E402,F401
 
-STATUS = {'N': 'NORMAL', 'A': 'ABNORMAL', 'X': 'NO RESULT'}
-LABEL = {'NORMAL': 'NO ABNORMALITY DETECTED', 'ABNORMAL': 'REFER: ABNORMAL HEART SOUND', 'NO RESULT': 'NO RESULT'}
+STATUS = {'N': 'NORMAL', 'A': 'ABNORMAL', 'U': 'UNSURE', 'X': 'NO RESULT'}
+LABEL = {'NORMAL': 'NO ABNORMALITY DETECTED', 'ABNORMAL': 'REFER: ABNORMAL HEART SOUND',
+         'UNSURE': 'UNSURE: RE-RECORD OR REFER', 'NO RESULT': 'NO RESULT'}
 
 
 def registry_path() -> Path:
@@ -71,25 +72,29 @@ def verify_qr(text: str, *, now: int | None = None) -> VerifiedResult:
 
 CAVEATS = ['Screening aid only - not a diagnosis.',
            'The AI score (0-100) is not a probability or a confidence %.',
-           'At the threshold of 50, about 1 in 9 abnormal recordings is missed (model card, CV).']
+           'In cross-validation about 1 in 30 abnormal recordings was cleared as NO REFER (held-out sensitivity 0.97).']
 
 
 def advice(d: dict) -> tuple[str, str]:
     """(explanation, recommendation) in plain words, from the verified result only."""
     if d['status'] == 'ABNORMAL':
-        return (f"The validated heart model ({d['model']}) scored this recording {d['score']}/100, above the "
-                "referral threshold of 50: the heart sound looks abnormal. The model does not name a disease.",
+        return (f"The validated heart model ({d['model']}) scored this recording {d['score']}/100, in the refer "
+                "band: the heart sound looks abnormal. The model does not name a disease.",
                 'Refer for clinical review and echocardiography.')
+    if d['status'] == 'UNSURE':
+        return (f"The validated heart model ({d['model']}) scored this recording {d['score']}/100, between the "
+                "no-refer and refer cut-offs: the screen cannot clear this patient.",
+                'Record again (quiet room, firm contact). If it stays unsure, refer.')
     if d['status'] == 'NORMAL':
         return (f"The validated heart model ({d['model']}) scored this recording {d['score']}/100, below the "
-                "threshold of 50: no abnormality detected.",
+                "no-refer cut-off: no abnormality detected.",
                 'No referral needed from this screen. Refer anyway if symptoms or findings suggest heart disease.')
     return ('The device produced no result (recording too short or AI model unavailable).',
             'Record again on the device.')
 
 
 def facts(d: dict) -> dict:
-    return {'AI score': '--' if d['score'] is None else f"{d['score']}/100", 'Threshold': '50/100',
+    return {'AI score': '--' if d['score'] is None else f"{d['score']}/100", 'Decision rule': f"{d['model']}.decision.json",
             'Windows analysed': d['n_windows'], 'Model': d['model'], 'Location': d['location'],
             'Device': d['device_id'], 'Result no.': d['counter'],
             'Signature': 'Signature verified (Ed25519)'}

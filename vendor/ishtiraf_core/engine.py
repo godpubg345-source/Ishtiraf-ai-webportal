@@ -4,6 +4,10 @@ Shared by the Pi dashboard and the web portal so both give identical results. It
 audio exactly as in training (no bandpass, no normalization, no gain change), scores every
 5 s window and averages them (decision D6), and returns NO RESULT instead of guessing
 when the model or the recording is not usable.
+
+Cut-offs come from `<model>.decision.json` (P1.5), which is tied to the model by sha256:
+REFER (ABNORMAL) / UNSURE / NO REFER (NORMAL). A fixed `threshold=` gives the old two-way
+output and is meant for evaluation only.
 """
 from __future__ import annotations
 
@@ -12,10 +16,12 @@ from pathlib import Path
 
 import numpy as np
 
+from . import decision as dc
 from . import preprocessing as pp
 
 MODEL_VERSION = 'heart_attention_v4'
-NORMAL, ABNORMAL, NO_RESULT = 'NORMAL', 'ABNORMAL', 'NO RESULT'
+NORMAL, ABNORMAL, UNSURE, NO_RESULT = 'NORMAL', 'ABNORMAL', 'UNSURE', 'NO RESULT'
+_STATUS = {dc.REFER: ABNORMAL, dc.UNSURE: UNSURE, dc.NO_REFER: NORMAL}
 MIN_SECONDS = 2  # below this the recording holds too little of a cardiac cycle
 
 
@@ -37,10 +43,11 @@ def _interpreter_class():
 
 @dataclass(frozen=True)
 class HeartResult:
-    status: str               # NORMAL / ABNORMAL / NO RESULT
+    status: str               # NORMAL / ABNORMAL / UNSURE / NO RESULT
     prob: float | None        # model probability of an abnormal recording (not calibrated)
     n_windows: int
     reason: str = ''
+    decision: str | None = None  # REFER / UNSURE / NO REFER from the decision file
 
     @property
     def score(self) -> int | None:
@@ -49,15 +56,23 @@ class HeartResult:
 
 
 class HeartEngine:
-    def __init__(self, model_path, threshold: float = 0.5):
+    def __init__(self, model_path, threshold: float | None = None, decision_path=None):
         self.model_path = Path(model_path)
         self.threshold = threshold
+        self.decision: dc.Decision | None = None
         self.version = MODEL_VERSION
         self.error = None
         self._interp = None
         try:
             if not self.model_path.exists():
                 raise FileNotFoundError(f'model file not found: {self.model_path}')
+            if threshold is None:
+                dpath = Path(decision_path) if decision_path else self.model_path.with_name(
+                    f'{self.model_path.stem}.decision.json')
+                if not dpath.exists():
+                    raise FileNotFoundError(f'decision file not found: {dpath.name}')
+                self.decision = dc.Decision.load(dpath)
+                self.decision.check_model(self.model_path)
             self._interp = _interpreter_class()(model_path=str(self.model_path))
             self._interp.allocate_tensors()
             self._in = self._interp.get_input_details()[0]
@@ -86,4 +101,7 @@ class HeartEngine:
             self._interp.invoke()
             probs.append(float(np.ravel(self._interp.get_tensor(self._out['index']))[-1]))
         prob = float(np.mean(probs))
-        return HeartResult(ABNORMAL if prob > self.threshold else NORMAL, prob, len(probs))
+        if self.decision is None:
+            return HeartResult(ABNORMAL if prob > self.threshold else NORMAL, prob, len(probs))
+        d = self.decision.classify(prob)
+        return HeartResult(_STATUS[d], prob, len(probs), decision=d)

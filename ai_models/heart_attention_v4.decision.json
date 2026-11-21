@@ -1,0 +1,136 @@
+{
+  "model": "heart_attention_v4.tflite",
+  "model_sha256": "315895493f8ef6c1aae04042b0d1a43fcf63d553c491ac5c513330a685bf8e56",
+  "t_lo": 0.27834752202033997,
+  "t_hi": 0.5080226659774781,
+  "platt_a": 1.254550150274868,
+  "platt_b": -0.9799311467049189,
+  "metrics": {
+    "source": "heart_attention_v4_oof.json (5-fold stratified, seed 42, mean of 5 s windows)",
+    "nested": {
+      "sensitivity": [
+        0.968421052631579,
+        0.023003095550042617
+      ],
+      "specificity": [
+        0.745242718446602,
+        0.05340900152649301
+      ],
+      "unsure_rate": [
+        0.15092592592592596,
+        0.039554368749631585
+      ],
+      "refer_sensitivity": [
+        0.8225563909774436,
+        0.017536697428106165
+      ],
+      "refer_specificity": [
+        0.8974757281553398,
+        0.012903493379290214
+      ]
+    },
+    "nested_folds": [
+      {
+        "fold": 1,
+        "t_lo": 0.2777892053127289,
+        "t_hi": 0.5028839111328126,
+        "sensitivity": 0.9774436090225563,
+        "specificity": 0.6873786407766991,
+        "unsure_rate": 0.18209876543209877,
+        "refer_sensitivity": 0.8345864661654135,
+        "refer_specificity": 0.8796116504854369,
+        "n": 648,
+        "n_abnormal": 133
+      },
+      {
+        "fold": 2,
+        "t_lo": 0.2777892053127289,
+        "t_hi": 0.5058686137199403,
+        "sensitivity": 0.9774436090225563,
+        "specificity": 0.6854368932038835,
+        "unsure_rate": 0.19753086419753085,
+        "refer_sensitivity": 0.7894736842105263,
+        "refer_specificity": 0.8854368932038835,
+        "n": 648,
+        "n_abnormal": 133
+      },
+      {
+        "fold": 3,
+        "t_lo": 0.3101820945739746,
+        "t_hi": 0.5101545453071595,
+        "sensitivity": 0.924812030075188,
+        "specificity": 0.8213592233009709,
+        "unsure_rate": 0.09104938271604938,
+        "refer_sensitivity": 0.8195488721804511,
+        "refer_specificity": 0.9087378640776699,
+        "n": 648,
+        "n_abnormal": 133
+      },
+      {
+        "fold": 4,
+        "t_lo": 0.27834752202033997,
+        "t_hi": 0.5080226659774781,
+        "sensitivity": 0.9699248120300752,
+        "specificity": 0.7844660194174757,
+        "unsure_rate": 0.12037037037037036,
+        "refer_sensitivity": 0.8345864661654135,
+        "refer_specificity": 0.9009708737864077,
+        "n": 648,
+        "n_abnormal": 133
+      },
+      {
+        "fold": 5,
+        "t_lo": 0.2748406231403351,
+        "t_hi": 0.5102914571762086,
+        "sensitivity": 0.9924812030075187,
+        "specificity": 0.7475728155339806,
+        "unsure_rate": 0.16358024691358025,
+        "refer_sensitivity": 0.8345864661654135,
+        "refer_specificity": 0.912621359223301,
+        "n": 648,
+        "n_abnormal": 133
+      }
+    ],
+    "at_0.5": {
+      "n": 3240,
+      "n_abnormal": 665,
+      "threshold": 0.5,
+      "tp": 553,
+      "fn": 112,
+      "tn": 2303,
+      "fp": 272,
+      "auc": 0.9495168990437258,
+      "sensitivity": 0.8315789473684211,
+      "specificity": 0.8943689320388349,
+      "accuracy": 0.8814814814814815,
+      "ppv": 0.6703030303030303,
+      "npv": 0.9536231884057971,
+      "f1": 0.7422818791946308
+    },
+    "auc_oof": 0.9495168990437258,
+    "ece_raw_heldout": [
+      0.08528675785025489,
+      0.025330801965999298
+    ],
+    "ece_platt_heldout": [
+      0.03565453865628445,
+      0.0050466952111099615
+    ],
+    "targets": {
+      "sensitivity": 0.97,
+      "refer_specificity": 0.9
+    },
+    "all_oof_at_band": {
+      "sensitivity": 0.9714285714285714,
+      "specificity": 0.7436893203883496,
+      "unsure_rate": 0.15493827160493828,
+      "refer_sensitivity": 0.8225563909774436,
+      "refer_specificity": 0.9001941747572816,
+      "n": 3240,
+      "n_abnormal": 665
+    },
+    "date": "2026-11-21",
+    "note": "Band chosen on CV models; applied to the final model trained with the same recipe on all data."
+  },
+  "version": 1
+}

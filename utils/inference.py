@@ -36,11 +36,12 @@ def get_engine():
 
 
 def analyze_heart(audio, sr):
-    """Returns a result dict; 'status' is NORMAL / ABNORMAL / NO RESULT."""
+    """Returns a result dict; 'status' is NORMAL / ABNORMAL / UNSURE / NO RESULT."""
     engine = get_engine()
     res = engine.score(audio, sr)
     out = {'organ': 'Heart', 'status': res.status, 'probability': res.prob, 'score': res.score,
-           'n_windows': res.n_windows, 'model': engine.version, 'threshold': engine.threshold,
+           'n_windows': res.n_windows, 'model': engine.version, 'decision': res.decision,
+           'band': None if engine.decision is None else {'unsure_from': engine.decision.t_lo, 'refer_from': engine.decision.t_hi},
            'note': 'Screening aid only - not a diagnosis. Score is 0-100, not a confidence.'}
     if res.status == NO_RESULT:
         out['reason'] = res.reason

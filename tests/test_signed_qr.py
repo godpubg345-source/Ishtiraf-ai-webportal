@@ -129,3 +129,11 @@ def test_register_script(tmp_path):
     assert json.loads(reg.read_text())['devices']['PI5-abc']['public_key'] == pub
     assert run('PI5-bad', 'zz' * 32).returncode != 0
     assert 'PI5-bad' not in reg.read_text()
+
+
+def test_unsure_result_is_shown_and_saved_as_unsure(authenticated_client, device):
+    token = device(st='U', sc=41, n=9)
+    html = authenticated_client.get(f'/scan?p={token}').get_data(as_text=True)
+    assert 'UNSURE: RE-RECORD OR REFER' in html and 'Record again' in html
+    _save(authenticated_client, token)
+    assert _diagnoses() == [(f'QR-{DEV}-9', DEV, 4.1, None, 'UNSURE: RE-RECORD OR REFER')]
