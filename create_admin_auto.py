@@ -1,6 +1,7 @@
 import sqlite3
 import bcrypt
 import os
+import secrets
 
 DB_PATH = "ishtiraf_ai.db"
 
@@ -13,7 +14,8 @@ def create_admin():
     cursor = conn.cursor()
 
     email = "admin@ishtiraf.ai"
-    password = "admin123"
+    # Never hardcode: take ADMIN_PASSWORD from env, else generate a random one
+    password = os.environ.get("ADMIN_PASSWORD") or secrets.token_urlsafe(12)
     name = "Super Admin"
     
     # Hash password

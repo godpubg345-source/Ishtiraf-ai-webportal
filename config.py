@@ -71,4 +71,6 @@ config = {
 def get_config():
     """Get configuration based on FLASK_ENV environment variable"""
     env = os.environ.get('FLASK_ENV', 'development')
+    if env == 'production' and not os.environ.get('SECRET_KEY'):
+        raise RuntimeError('SECRET_KEY environment variable is required in production')
     return config.get(env, config['default'])

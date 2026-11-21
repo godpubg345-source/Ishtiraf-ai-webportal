@@ -29,9 +29,13 @@ class TestUserModel:
         assert user.check_password('correctpassword') == True
         assert user.check_password('wrongpassword') == False
     
-    def test_user_defaults(self):
-        """Test user default values"""
+    def test_user_defaults(self, app):
+        """Test user default values (column defaults apply when the row is saved)"""
+        from app import db
         user = User(email='test@test.com', name='Test', role='doctor')
+        user.set_password('x')
+        db.session.add(user)
+        db.session.commit()
         
         assert user.is_active == True
         assert user.is_verified == False
