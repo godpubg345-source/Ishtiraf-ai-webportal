@@ -18,32 +18,29 @@ def analyzer():
 
 
 def process_audio_chunk(audio_base64, sample_rate=2000):
-    """
-    Process audio chunk received from browser.
-    Returns analysis results.
-    """
-    try:
-        # Decode base64 audio
-        audio_bytes = base64.b64decode(audio_base64)
-        audio_data = np.frombuffer(audio_bytes, dtype=np.float32)
-        
-        # Determine Organ (Simple Logic for now, can be expanded)
-        # Defaulting to Heart for Web Portal demo unless specified
-        # In a full version, we'd pass 'mode' from frontend
-        
-        from utils.inference import analyze_heart, analyze_lung
-        
-        # Run Analysis (Defaulting to Heart for now)
-        # TODO: Get 'mode' from request
-        result = analyze_heart(audio_data, sr=sample_rate)
-        
-        if "error" in result:
-             # Fallback to lung if heart fails or just return error
-             pass
+    """Decode base64 float32 PCM and score it with the shared heart engine.
 
-        return {
-            'status': 'analyzed',
-            'data': result
-        }
-    except Exception as e:
-        return {'error': str(e)}
+    Returns (http_status, body). 400 = bad input, 422 = audio not usable,
+    503 = AI model not available, 200 = result.
+    """
+    from utils.inference import analyze_heart, get_engine
+    import binascii
+    try:
+        sample_rate = int(sample_rate)
+    except (TypeError, ValueError):
+        return 400, {'error': 'sample_rate must be an integer'}
+    if not 1000 <= sample_rate <= 96000:
+        return 400, {'error': 'sample_rate must be between 1000 and 96000 Hz'}
+    try:
+        raw = base64.b64decode(audio_base64, validate=True)
+        audio = np.frombuffer(raw, dtype=np.float32)
+    except (binascii.Error, ValueError, TypeError):
+        return 400, {'error': 'audio must be base64-encoded float32 PCM'}
+    if audio.size == 0:
+        return 400, {'error': 'empty audio'}
+    if not get_engine().available:
+        return 503, {'status': 'NO RESULT', 'error': 'AI model not available', 'reason': get_engine().error}
+    result = analyze_heart(audio.astype(np.float64), sample_rate)
+    if result['status'] == 'NO RESULT':
+        return 422, result
+    return 200, {'status': 'analyzed', 'data': result}

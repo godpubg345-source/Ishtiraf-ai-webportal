@@ -111,37 +111,39 @@
                     resultStatus.innerText = "PROCESSING DATA...";
                     resultDetail.innerText = "SENDING TO NEURAL NETWORK";
 
-                    // Convert to Base64
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' }); // simplistic
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = async () => {
-                        const base64Audio = reader.result.split(',')[1];
-
-                        // Send to API
+                    // Decode the recording to raw float32 PCM (the model needs samples, not webm/opus bytes)
+                    try {
+                        const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+                        const decoded = await audioContext.decodeAudioData(await blob.arrayBuffer());
+                        const pcm = decoded.getChannelData(0);
+                        const bytes = new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength);
+                        let binary = '';
+                        for (let i = 0; i < bytes.length; i += 0x8000) {
+                            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+                        }
                         const response = await fetch('/api/analyze-audio', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ audio: base64Audio })
+                            body: JSON.stringify({ audio: btoa(binary), sample_rate: decoded.sampleRate })
                         });
-
                         const data = await response.json();
 
-                        if (data.status === 'processed' && data.data) {
+                        if (response.ok && data.status === 'analyzed' && data.data) {
                             const ai = data.data;
-                            // Update UI
-                            resultStatus.className = ai.status === 'NORMAL' ? 'text-4xl font-bold text-green' : 'text-4xl font-bold text-red';
-                            resultStatus.innerText = ai.status;
-                            resultDetail.innerText = `${ai.diagnosis} (Conf: ${ai.confidence}%)`;
-
-                            if (ai.status !== 'NORMAL') {
-                                btn.classList.add('danger');
-                            }
+                            const abnormal = ai.status === 'ABNORMAL';
+                            resultStatus.className = abnormal ? 'text-4xl font-bold text-red' : 'text-4xl font-bold text-green';
+                            resultStatus.innerText = abnormal ? 'REFER: ABNORMAL' : 'NO ABNORMALITY DETECTED';
+                            resultDetail.innerText = `AI score ${ai.score}/100 - ${ai.n_windows} x 5 s windows - screening aid, not a diagnosis`;
+                            if (abnormal) btn.classList.add('danger');
                         } else {
-                            resultStatus.innerText = "ERROR";
-                            resultDetail.innerText = data.error || "Analysis Failed";
+                            resultStatus.className = 'text-2xl font-bold text-yellow-500';
+                            resultStatus.innerText = 'NO RESULT';
+                            resultDetail.innerText = data.reason || data.error || 'Analysis failed';
                         }
-                    };
+                    } catch (err) {
+                        resultStatus.innerText = 'NO RESULT';
+                        resultDetail.innerText = 'Could not decode the recording: ' + err;
+                    }
                 };
 
                 mediaRecorder.start();

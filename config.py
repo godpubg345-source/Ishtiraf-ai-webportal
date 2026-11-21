@@ -76,3 +76,15 @@ def get_config():
     if env == 'production' and not os.environ.get('JWT_SECRET'):
         raise RuntimeError('JWT_SECRET environment variable is required in production')
     return config.get(env, config['default'])
+
+
+LOOPBACK_HOSTS = ('127.0.0.1', 'localhost', '::1')
+
+
+def run_options(env):
+    """(host, port, debug) for app.run. The Werkzeug debugger allows remote code execution,
+    so it is enabled only when explicitly requested AND the server listens on loopback."""
+    host = env.get('HOST', '127.0.0.1')
+    port = int(env.get('PORT', 5000))
+    debug = env.get('FLASK_DEBUG') == '1' and host in LOOPBACK_HOSTS
+    return host, port, debug

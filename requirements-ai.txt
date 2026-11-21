@@ -1,0 +1,4 @@
+# AI runtime for utils/inference.py (heart_attention_v4.tflite). Install with requirements.txt.
+ai-edge-litert; platform_system != "Windows"
+# Windows has no LiteRT wheel: use full TensorFlow on Python 3.11/3.12
+tensorflow==2.18.1; platform_system == "Windows"

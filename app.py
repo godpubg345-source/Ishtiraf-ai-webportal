@@ -231,29 +231,20 @@ def health_check():
 @app.route('/api/analyze-audio', methods=['POST'])
 @login_required
 def analyze_audio():
-    """API endpoint to analyze audio from browser"""
-    try:
-        data = request.get_json()
-        audio_base64 = data.get('audio')
-        
-        if not audio_base64:
-            return jsonify({'error': 'No audio data provided'}), 400
-        
-        # Process audio (simplified - full analysis requires TF model)
-        from routes.realtime import process_audio_chunk
-        result = process_audio_chunk(audio_base64)
-        
-        return jsonify({
-            'status': 'processed',
-            'message': 'Audio received and processed. For full AI diagnosis, use the desktop application.',
-            **result
-        })
-    except Exception as e:
-        logger.error(f"Audio analysis error: {e}")
-        return jsonify({'error': str(e)}), 500
+    """Score browser/device audio with the shared heart engine (same result as the Pi).
+
+    JSON: {"audio": base64 float32 PCM, "sample_rate": int (default 2000)}
+    """
+    data = request.get_json(silent=True) or {}
+    if not data.get('audio'):
+        return jsonify({'error': 'No audio data provided'}), 400
+    from routes.realtime import process_audio_chunk
+    status, body = process_audio_chunk(data['audio'], data.get('sample_rate', 2000))
+    return jsonify(body), status
 
 
 @app.route('/api/decrypt_qr', methods=['POST'])
+@login_required  # patient data: never public
 def decrypt_qr():
     if not ENCRYPTION_KEY:
         return jsonify({"error": "Encryption key not configured"}), 500
@@ -270,6 +261,7 @@ def decrypt_qr():
         return jsonify({"status": "error", "message": str(e)}), 400
 
 @app.route('/api/save_patient', methods=['POST'])
+@login_required  # patient data: never public
 def save_patient():
     try:
         data = request.json
@@ -314,12 +306,14 @@ def save_patient():
 # --- Web Portal 2.0 Routes ---
 
 @app.route('/qr-scanner')
+@login_required  # patient data: never public
 def qr_scanner():
     """Camera-based QR scanner page"""
     return render_template('qr_scanner.html')
 
 
 @app.route('/api/scan_qr_image', methods=['POST'])
+@login_required  # patient data: never public
 def scan_qr_image():
     """
     Server-side QR decoder for uploaded images.
@@ -407,6 +401,7 @@ def scan_qr_image():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/scan')
+@login_required  # patient data: never public
 def scan_qr():
     # Support both ?p= (new minimal) and ?payload= (legacy)
     payload = request.args.get('p') or request.args.get('payload')
@@ -517,12 +512,14 @@ def scan_qr():
 # --- V3.0 High-Capacity Optical Transfer Routes ---
 
 @app.route('/scan/v3')
+@login_required  # patient data: never public
 def scan_v3():
     """V3.0: Decode JAB Code with neural audio."""
     return render_template('scan_v3.html')
 
 
 @app.route('/api/decode_v3', methods=['POST'])
+@login_required  # patient data: never public
 def api_decode_v3():
     """API: Decode V3.0 payload (base64 or raw bytes)."""
     try:
@@ -551,6 +548,7 @@ def api_decode_v3():
 
 
 @app.route('/api/playback_audio', methods=['POST'])
+@login_required  # patient data: never public
 def api_playback_audio():
     """API: Stream reconstructed audio as WAV."""
     try:
@@ -641,6 +639,7 @@ def save_to_account():
 
 
 @app.route('/save-from-qr', methods=['POST'])
+@login_required  # patient data: never public
 def save_from_qr():
     """
     Saves patient info (from form) + diagnosis (from QR payload).
@@ -771,7 +770,8 @@ if __name__ == '__main__':
             except Exception as e:
                 logger.error(f"Migration Failed: {e}")
 
-    # Run on 0.0.0.0 to be accessible from phone
-    host = os.environ.get('HOST', '0.0.0.0')
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=app.config.get('DEBUG', True), host=host, port=port)
+    # Localhost by default. For phones on the LAN set HOST=0.0.0.0; the debugger is then
+    # always off (it allows code execution), see config.run_options.
+    from config import run_options
+    host, port, debug = run_options(os.environ)
+    app.run(debug=debug, host=host, port=port)
