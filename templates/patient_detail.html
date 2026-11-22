@@ -1,186 +1,152 @@
 {% extends "base.html" %}
+{% import "partials/ui.html" as ui with context %}
 
-{% block title %}{{ patient.name }} - Medical Record{% endblock %}
+{% block title %}{{ patient.name }} · IshtirafAI{% endblock %}
+{% block crumbs %}<a href="{{ url_for('dashboard') }}" class="hover:text-gray-900">Overview</a><i class="fas fa-chevron-right text-[10px] text-gray-400"></i><b class="truncate">{{ patient.name }}</b>{% endblock %}
 
 {% block content %}
-<!-- Patient Header -->
-<div class="glass-panel p-8 mb-8 relative overflow-hidden">
-    <div class="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-3xl opacity-10 -mr-16 -mt-16"></div>
+{% set history = patient.diagnoses|sort(attribute='timestamp', reverse=True) %}
+{% set latest = history[0] if history else None %}
+{% set latest_k = ui.status_key(latest.diagnosis_result)|trim if latest else 'none' %}
 
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center relative z-10">
-        <div class="flex items-center gap-6">
-            <div
-                class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg">
-                {{ patient.name[:2].upper() }}
-            </div>
-            <div>
-                <h1 class="text-3xl font-bold text-gray-800">{{ patient.name }}</h1>
-                <div class="flex gap-4 mt-2 text-sm text-gray-500 font-medium">
-                    <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full">ID: #{{ patient.id }}</span>
-                    <span class="flex items-center gap-1"><i class="fas fa-venus-mars"></i> {{ patient.gender }}</span>
-                    <span class="flex items-center gap-1"><i class="fas fa-birthday-cake"></i> {{ patient.age }}
-                        Years</span>
-                    <span class="flex items-center gap-1"><i class="fas fa-phone"></i> {{ patient.contact }}</span>
+<!-- Patient header -->
+<section class="card relative overflow-hidden" data-reveal>
+    <div class="absolute inset-y-0 left-0 w-1 tone-{{ latest_k }}" style="background: rgb(var(--tone))"></div>
+    <div class="flex flex-col gap-6 p-6 sm:p-8 md:flex-row md:items-center md:justify-between">
+        <div class="flex items-center gap-5">
+            <div class="avatar h-16 w-16 shrink-0 text-xl">{{ ui.initials(patient.name) }}</div>
+            <div class="min-w-0">
+                <h1 class="display truncate text-[34px] sm:text-[40px]">{{ patient.name }}</h1>
+                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600">
+                    <span class="badge mono">#{{ patient.id }}</span>
+                    <span class="inline-flex items-center gap-1.5"><i class="fas fa-venus-mars text-xs text-gray-400"></i>{{ patient.gender }}</span>
+                    <span class="inline-flex items-center gap-1.5"><i class="fas fa-cake-candles text-xs text-gray-400"></i>{{ patient.age }} years</span>
+                    {% if patient.contact %}<span class="inline-flex items-center gap-1.5"><i class="fas fa-phone text-xs text-gray-400"></i><span class="num">{{ patient.contact }}</span></span>{% endif %}
                 </div>
             </div>
         </div>
-
-        <div class="mt-4 md:mt-0 flex gap-3">
-            <button
-                class="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-50 transition shadow-sm">
-                <i class="fas fa-qrcode mr-2"></i> Generate QR
-            </button>
-            <button
-                class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition shadow-lg btn-primary">
-                <i class="fas fa-stethoscope mr-2"></i> New Scan
-            </button>
+        <div class="flex flex-wrap items-center gap-3">
+            {% if latest %}
+            <div class="mr-2 text-right">
+                <p class="eyebrow">Latest result</p>
+                <div class="mt-1.5">{{ ui.status_badge(latest.diagnosis_result, 'status-lg') }}</div>
+            </div>
+            <a href="{{ url_for('export_pdf', diagnosis_id=latest.id) }}" class="btn btn-secondary"><i class="far fa-file-pdf"></i> Latest report</a>
+            {% endif %}
+            <a href="{{ url_for('qr_scanner') }}" class="btn btn-primary"><i class="fas fa-qrcode"></i> Add result</a>
         </div>
     </div>
-</div>
+</section>
 
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<div class="mt-6 grid gap-6 lg:grid-cols-12">
+    <!-- History -->
+    <section class="lg:col-span-8" aria-labelledby="historyTitle">
+        <div class="mb-4 flex items-baseline justify-between">
+            <h2 id="historyTitle" class="text-lg font-semibold">Screening history</h2>
+            <span class="text-sm text-gray-500">{{ history|length }} result{{ '' if history|length == 1 else 's' }}</span>
+        </div>
 
-    <!-- Left: Timeline/History -->
-    <div class="lg:col-span-8 space-y-8">
-        <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <i class="fas fa-history text-blue-500"></i> Clinical History
-        </h2>
+        {% if not history %}
+        <div class="card empty-state" data-reveal>
+            <i class="fas fa-stethoscope"></i>
+            <p class="title">No results for this patient yet</p>
+            <p class="max-w-sm text-sm">Record on the device, then scan its QR and save it with this patient's name and contact.</p>
+            <a href="{{ url_for('qr_scanner') }}" class="btn btn-primary btn-sm mt-3"><i class="fas fa-qrcode"></i> Scan device QR</a>
+        </div>
+        {% endif %}
 
-        {% for diag in patient.diagnoses|reverse %}
-        <div class="glass-panel p-0 overflow-hidden transition-all hover:shadow-xl group">
-            <!-- Diagnosis Header -->
-            <div
-                class="p-6 border-b border-gray-100 flex justify-between items-start bg-gradient-to-r from-white to-gray-50">
-                <div class="flex gap-4">
-                    <div
-                        class="p-3 rounded-lg {{ 'bg-red-100 text-red-600' if 'ABNORMAL' in diag.diagnosis_result else 'bg-green-100 text-green-600' }}">
-                        <i
-                            class="fas {{ 'fa-heart-broken' if 'ABNORMAL' in diag.diagnosis_result else 'fa-heart' }} text-2xl"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-800">{{ diag.diagnosis_result }}</h3>
-                        <p class="text-sm text-gray-500">{{ diag.timestamp.strftime('%d %B %Y, %I:%M %p') if
-                            diag.timestamp else 'N/A' }} • {{
-                            diag.organ_mode }} Scan</p>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <span
-                        class="block text-3xl font-bold {{ 'text-red-500' if diag.risk_score > 5 else 'text-blue-500' }}">
-                        {{ diag.risk_score }}<span class="text-sm text-gray-400">/10</span>
-                    </span>
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wide">Risk Score</span>
-                </div>
-            </div>
-
-            <!-- AI Explanation Section (XAI) -->
-            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-white">
-
-                <!-- 1. AI Reasoning -->
-                <div>
-                    <h4 class="text-sm font-bold text-gray-400 uppercase mb-3 tracking-wider">🤖 AI Interpretation</h4>
-                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                        <p class="text-gray-700 leading-relaxed text-sm">
-                            <i class="fas fa-info-circle text-blue-500 mr-1"></i>
-                            The AI model analyzed <strong>{{ diag.path_used.split('/')[-1] }}</strong> and detected
-                            patterns consistent with
-                            <strong
-                                class="{{ 'text-red-600' if ('ABNORMAL' in (diag.diagnosis_result or '') and 'NO ABNORMALITY' not in diag.diagnosis_result) else 'text-green-600' }}">
-                                {{ diag.diagnosis_result.split(':')[-1] }}
-                            </strong>.
-                        </p>
-                        <div class="mt-3 flex gap-2">
-                            {% if diag.confidence is not none %}
-                            <span class="text-xs bg-white border border-gray-200 px-2 py-1 rounded text-gray-600">
-                                Confidence: <strong>{{ diag.confidence }}%</strong>
-                            </span>
-                            {% endif %}
-                            {% if diag.rms_value is not none %}
-                            <span class="text-xs bg-white border border-gray-200 px-2 py-1 rounded text-gray-600">
-                                RMS: <strong>{{ "%.2f"|format(diag.rms_value) }}</strong>
-                            </span>
-                            {% endif %}
-                            {% if diag.path_used %}
-                            <span class="text-xs bg-white border border-gray-200 px-2 py-1 rounded text-gray-600">
-                                Model: <strong>{{ diag.path_used }}</strong>
-                            </span>
-                            {% endif %}
+        <ol class="relative grid gap-5">
+            {% for diag in history %}
+            {% set k = ui.status_key(diag.diagnosis_result)|trim %}
+            {% set score = (diag.risk_score * 10)|round|int if diag.risk_score is not none else None %}
+            <li class="card overflow-hidden tone-{{ k }} {{ 'result-reveal' if loop.first }}" data-reveal>
+                <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
+                    <div class="flex gap-4">
+                        <div class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl tone-bg"><i class="fas {{ ui.status_icon(k) }} text-lg"></i></div>
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">{{ ui.status_badge(diag.diagnosis_result) }}{% if loop.first %}<span class="badge">Latest</span>{% endif %}</div>
+                            <h3 class="mt-2 font-semibold text-gray-900">{{ diag.diagnosis_result }}</h3>
+                            <p class="mt-0.5 text-sm text-gray-500"><span class="num">{{ diag.timestamp.strftime('%d %B %Y, %I:%M %p') }}</span> · {{ diag.organ_mode or 'Heart' }}</p>
                         </div>
                     </div>
-                </div>
-
-                <!-- 2. Clinical Correlation -->
-                <div>
-                    <h4 class="text-sm font-bold text-gray-400 uppercase mb-3 tracking-wider">🩺 Clinical Action</h4>
-                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 h-full">
-                        <p class="text-gray-800 font-medium italic">"{{ diag.recommendation }}"</p>
-                        {% if 'ABNORMAL' in diag.diagnosis_result %}
-                        <ul class="mt-3 space-y-1 text-sm text-gray-600">
-                            <li>• Auscultate {{ diag.organ_mode }} area again.</li>
-                            <li>• Check for associated symptoms.</li>
-                        </ul>
-                        {% else %}
-                        <p class="mt-2 text-sm text-green-600 font-medium">Routine follow-up only.</p>
-                        {% endif %}
+                    <div class="shrink-0 sm:w-40 sm:text-right">
+                        <p class="eyebrow">AI score</p>
+                        {% if score is not none %}
+                        <p class="mt-1 leading-none"><span class="display num text-[44px] tone-text" data-count="{{ score }}">{{ score }}</span><span class="text-sm text-gray-400"> / 100</span></p>
+                        <div class="meter mt-2"><span style="width: {{ [score, 100]|min }}%"></span></div>
+                        {% else %}<p class="display mt-1 text-[44px] text-gray-300">—</p>{% endif %}
                     </div>
                 </div>
-            </div>
 
-            <!-- Footer Actions -->
-            <div class="bg-gray-50 p-4 flex justify-between items-center border-t border-gray-100">
-                <div class="text-xs text-gray-400 font-mono">ID: {{ diag.diagnosis_id }}</div>
-                <div class="flex gap-2">
-                    <button class="text-gray-500 hover:text-blue-600 text-sm font-semibold px-3 py-1 transition">
-                        <i class="fas fa-share-alt mr-1"></i> Share
-                    </button>
-                    <a href="{{ url_for('export_pdf', diagnosis_id=diag.id) }}"
-                        class="text-blue-600 hover:text-blue-700 text-sm font-bold px-3 py-1 bg-blue-50 rounded-lg transition">
-                        <i class="fas fa-file-pdf mr-1"></i> View Report
-                    </a>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <!-- Right: Sidebar Stats -->
-    <div class="lg:col-span-4 space-y-6">
-        <!-- Vitals Card -->
-        <div class="glass-panel p-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">Latest Vitals (AI Est.)</h3>
-            <div class="grid grid-cols-2 gap-4">
-                <div class="p-4 bg-gray-50 rounded-xl text-center">
-                    <div class="text-gray-400 text-xs uppercase font-bold">Heart Rate</div>
-                    <div class="text-2xl font-bold text-gray-800 mt-1">72 <span
-                            class="text-xs font-normal text-gray-400">bpm</span></div>
-                </div>
-                <div class="p-4 bg-gray-50 rounded-xl text-center">
-                    <div class="text-gray-400 text-xs uppercase font-bold">Respiration</div>
-                    <div class="text-2xl font-bold text-gray-800 mt-1">16 <span
-                            class="text-xs font-normal text-gray-400">/min</span></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Risk Trend -->
-        <div class="glass-panel p-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">Risk Trend Analysis</h3>
-            <div class="h-40 bg-gray-50 rounded-xl flex items-end justify-between p-4 pb-0">
-                <!-- Simulated Bars -->
-                {% for i in range(5) %}
-                <div class="w-1/6 bg-blue-200 rounded-t-lg mx-1 relative group"
-                    style="height: {{ range(20, 80) | random }}%;">
-                    <div
-                        class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition">
-                        Scan #{{ i+1 }}
+                <div class="grid gap-px border-t border-gray-200 bg-gray-200 sm:grid-cols-2">
+                    <div class="bg-white p-5 sm:p-6">
+                        <p class="eyebrow mb-2">What the model reported</p>
+                        <p class="text-sm leading-relaxed text-gray-700">
+                            {% if score is not none %}
+                            The heart model{% if diag.path_used %} <span class="mono text-gray-900">{{ diag.path_used.split('/')[-1] }}</span>{% endif %} scored this recording <b class="num">{{ score }}/100</b>.
+                            {% else %}No AI score was stored for this result.{% endif %}
+                            It does not name a disease.
+                        </p>
+                        {% if diag.rms_value is not none %}<p class="mt-2 text-xs text-gray-500">Signal RMS <span class="num">{{ "%.2f"|format(diag.rms_value) }}</span></p>{% endif %}
+                    </div>
+                    <div class="bg-white p-5 sm:p-6">
+                        <p class="eyebrow mb-2">Next step</p>
+                        <p class="text-sm font-medium leading-relaxed text-gray-900">{{ diag.recommendation or 'No recommendation stored.' }}</p>
                     </div>
                 </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 bg-gray-50 px-5 py-3 sm:px-6">
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                        <span class="mono">{{ diag.diagnosis_id }}</span>
+                        {% if diag.device_id %}<span class="inline-flex items-center gap-1.5"><i class="fas fa-microchip"></i><span class="mono">{{ diag.device_id }}</span></span>{% endif %}
+                    </div>
+                    <a href="{{ url_for('export_pdf', diagnosis_id=diag.id) }}" class="btn btn-ghost btn-sm"><i class="far fa-file-pdf"></i> PDF report</a>
+                </div>
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+
+    <!-- Side -->
+    <aside class="grid content-start gap-6 lg:col-span-4">
+        <div class="card card-pad" data-reveal>
+            <h2 class="card-title"><i class="fas fa-chart-line"></i>AI score over time</h2>
+            {% if history|length > 1 %}
+            {% set pts = history|reverse|list %}
+            {% set n = pts|length %}
+            <svg viewBox="0 0 300 120" class="score-spark mt-5 h-32 w-full overflow-visible" role="img" aria-label="AI score of each result, oldest to newest">
+                <line x1="0" x2="300" y1="120" y2="120" class="stroke-gray-200" stroke-width="1"/>
+                {% set coords = [] %}
+                {% for d in pts %}{% set _ = coords.append(((loop.index0 * 300 / (n - 1))|round(1), (120 - ((d.risk_score or 0) * 10) * 1.1)|round(1))) %}{% endfor %}
+                <polyline pathLength="1" class="spark-line" style="fill: none; stroke: rgb(var(--brand-600)); stroke-width: 2" stroke-linejoin="round" stroke-linecap="round"
+                    points="{% for c in coords %}{{ c[0] }},{{ c[1] }} {% endfor %}"/>
+                {% for d in pts %}
+                <circle cx="{{ coords[loop.index0][0] }}" cy="{{ coords[loop.index0][1] }}" r="5" class="tone-{{ ui.status_key(d.diagnosis_result)|trim }}" style="fill: rgb(var(--tone)); stroke: rgb(var(--surface)); stroke-width: 2">
+                    <title>{{ d.timestamp.strftime('%d %b %Y') }}: {{ ((d.risk_score or 0) * 10)|round|int }}/100</title>
+                </circle>
                 {% endfor %}
-                <div class="w-1/6 bg-blue-500 rounded-t-lg mx-1 relative animate-pulse"
-                    style="height: {{ avg_risk * 10 }}%;"></div>
-            </div>
-            <p class="text-xs text-center text-gray-400 mt-3">Last 6 Clinical Encounters</p>
+            </svg>
+            <div class="mt-2 flex justify-between text-xs text-gray-500"><span>{{ pts[0].timestamp.strftime('%d %b') }}</span><span>{{ pts[-1].timestamp.strftime('%d %b') }}</span></div>
+            {% else %}
+            <p class="mt-3 text-sm text-gray-500">A trend appears once this patient has two or more results.</p>
+            {% endif %}
         </div>
-    </div>
+
+        <div class="card card-pad" data-reveal>
+            <h2 class="card-title"><i class="fas fa-id-card"></i>Record</h2>
+            <dl class="kv mt-4">
+                <div><dt>Registered</dt><dd class="num">{{ patient.created_at.strftime('%d %b %Y') if patient.created_at else '—' }}</dd></div>
+                <div><dt>Results</dt><dd class="num">{{ history|length }}</dd></div>
+                <div><dt>Devices</dt><dd class="mono text-xs">{{ history|map(attribute='device_id')|select|unique|join(', ') or '—' }}</dd></div>
+                <div><dt>Refer results</dt><dd class="num">{% set c = namespace(n=0) %}{% for d in history %}{% if ui.status_key(d.diagnosis_result)|trim == 'refer' %}{% set c.n = c.n + 1 %}{% endif %}{% endfor %}{{ c.n }}</dd></div>
+            </dl>
+            <p class="mt-4 text-xs leading-relaxed text-gray-500">The AI score (0–100) is not a probability. Screening aid only, not a diagnosis.</p>
+        </div>
+    </aside>
 </div>
+<style>
+    .spark-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: spark 1.2s var(--ease-out) .3s forwards; }
+    @keyframes spark { to { stroke-dashoffset: 0; } }
+    .result-reveal .status-lg, .result-reveal .tone-bg { animation: pop-in 600ms var(--ease-out) both; }
+</style>
 {% endblock %}

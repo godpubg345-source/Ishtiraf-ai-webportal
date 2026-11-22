@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="mb-8">
-    <h2 class="text-3xl font-bold text-white">Analytics Dashboard</h2>
+    <h2 class="text-3xl font-bold text-gray-900">Analytics Dashboard</h2>
     <p class="text-gray-400 mt-1">System insights and statistics</p>
 </div>
 
@@ -12,15 +12,15 @@
 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
     <div class="glass p-6 rounded-xl border-l-4 border-blue-500">
         <p class="text-gray-400 text-sm uppercase">Total Users</p>
-        <p class="text-3xl font-bold text-white mt-2">{{ total_users }}</p>
+        <p class="text-3xl font-bold text-gray-900 mt-2">{{ total_users }}</p>
     </div>
     <div class="glass p-6 rounded-xl border-l-4 border-green-500">
         <p class="text-gray-400 text-sm uppercase">Total Patients</p>
-        <p class="text-3xl font-bold text-white mt-2">{{ total_patients }}</p>
+        <p class="text-3xl font-bold text-gray-900 mt-2">{{ total_patients }}</p>
     </div>
     <div class="glass p-6 rounded-xl border-l-4 border-purple-500">
         <p class="text-gray-400 text-sm uppercase">Total Diagnoses</p>
-        <p class="text-3xl font-bold text-white mt-2">{{ total_diagnoses }}</p>
+        <p class="text-3xl font-bold text-gray-900 mt-2">{{ total_diagnoses }}</p>
     </div>
     <div class="glass p-6 rounded-xl border-l-4 border-yellow-500">
         <p class="text-gray-400 text-sm uppercase">High Risk Cases</p>
@@ -32,7 +32,7 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
     <!-- Risk Distribution Pie Chart -->
     <div class="glass p-6 rounded-xl">
-        <h3 class="text-xl font-bold text-white mb-4">
+        <h3 class="text-xl font-bold text-gray-900 mb-4">
             <i class="fas fa-chart-pie mr-2 text-blue-400"></i>Risk Distribution
         </h3>
         <div style="height: 300px;">
@@ -42,7 +42,7 @@
 
     <!-- Users by Role Bar Chart -->
     <div class="glass p-6 rounded-xl">
-        <h3 class="text-xl font-bold text-white mb-4">
+        <h3 class="text-xl font-bold text-gray-900 mb-4">
             <i class="fas fa-users mr-2 text-green-400"></i>Users by Role
         </h3>
         <div style="height: 300px;">
@@ -53,7 +53,7 @@
 
 <!-- Diagnoses Trend Line Chart -->
 <div class="glass p-6 rounded-xl mb-8">
-    <h3 class="text-xl font-bold text-white mb-4">
+    <h3 class="text-xl font-bold text-gray-900 mb-4">
         <i class="fas fa-chart-line mr-2 text-purple-400"></i>Diagnoses Trend (Last 7 Days)
     </h3>
     <div style="height: 300px;">
@@ -63,7 +63,7 @@
 
 <!-- Quick Stats -->
 <div class="glass p-6 rounded-xl">
-    <h3 class="text-xl font-bold text-white mb-4">
+    <h3 class="text-xl font-bold text-gray-900 mb-4">
         <i class="fas fa-info-circle mr-2 text-yellow-400"></i>Risk Breakdown
     </h3>
     <div class="grid grid-cols-3 gap-4 text-center">

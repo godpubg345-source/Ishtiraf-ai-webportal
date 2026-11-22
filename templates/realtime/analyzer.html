@@ -1,117 +1,171 @@
 {% extends "base.html" %}
+{% import "partials/ui.html" as ui with context %}
 
-{% block title %}IshtirafAI - Command Center{% endblock %}
+{% block title %}Live analysis · IshtirafAI{% endblock %}
+{% block crumbs %}<b>Live analysis</b>{% endblock %}
 
 {% block content %}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[80vh]">
-    <!-- Left Panel: Vitals & Mode -->
-    <div class="col-span-1 flex flex-col gap-6">
-        <div class="hud-card flex-1 flex flex-col justify-center items-center text-center">
-            <h3 class="text-dim text-sm mb-2">SYSTEM MODE</h3>
-            <h1 class="text-4xl font-bold text-cyan glitch-text">AUTO-SCAN</h1>
-            <p class="text-dim text-xs mt-2">v2.1.0 // ONLINE</p>
-        </div>
-
-        <div class="hud-card flex-1">
-            <h3 class="text-dim text-sm mb-4">SENSOR STATUS</h3>
-            <div class="flex justify-between items-center mb-2">
-                <span class="text-sm">MICROPHONE</span>
-                <span class="text-green text-xs font-bold">ACTIVE</span>
-            </div>
-            <div class="w-full bg-gray-800 h-1 mt-1">
-                <div class="bg-green h-1" style="width: 100%;"></div>
-            </div>
-
-            <div class="flex justify-between items-center mt-6 mb-2">
-                <span class="text-sm">AI ENGINE</span>
-                <span class="text-cyan text-xs font-bold">READY</span>
-            </div>
-            <div class="w-full bg-gray-800 h-1 mt-1">
-                <div class="bg-cyan h-1" style="width: 100%;"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Center Panel: Visualization -->
-    <div class="col-span-1 lg:col-span-2 flex flex-col gap-6">
-        <div class="hud-card flex-1 flex flex-col relative">
-            <div class="absolute top-4 left-4 text-xs text-dim">WAVEFORM VISUALIZATION // REAL-TIME</div>
-
-            <!-- Canvas for Waveform -->
-            <canvas id="vis-canvas"
-                class="w-full flex-1 mb-4 border border-gray-800 bg-black bg-opacity-50 rounded"></canvas>
-
-            <div id="status-display" class="hidden text-center py-4 border-t border-gray-800">
-                <div class="text-2xl font-bold mb-1" id="result-status">ANALYZING...</div>
-                <div class="text-sm text-dim" id="result-detail">PLEASE WAIT</div>
-            </div>
-
-            <div class="flex gap-4 mt-4">
-                <button id="recordBtn" class="btn-sci-fi flex-1 py-4 text-xl" onclick="toggleRecording()">
-                    <i class="fas fa-microchip mr-2"></i> INITIATE SCAN
-                </button>
-            </div>
-        </div>
+<div class="page-header" data-reveal>
+    <div>
+        <p class="eyebrow">Browser microphone</p>
+        <h1 class="page-title mt-1">Live heart-sound analysis</h1>
+        <p class="page-sub max-w-xl">Record through this computer's microphone or a connected digital stethoscope. The same heart model as the device scores it on this server.</p>
     </div>
 </div>
 
-<!-- Hidden result modal or overlay could go here -->
+<div class="grid gap-6 lg:grid-cols-12">
+    <!-- Recorder -->
+    <section class="card card-pad flex flex-col items-center text-center lg:col-span-4" data-reveal aria-label="Recorder">
+        <div class="rec-wrap mt-4" id="recWrap">
+            <span class="rec-ring r1" aria-hidden="true"></span><span class="rec-ring r2" aria-hidden="true"></span>
+            <button id="recordBtn" class="rec-btn" onclick="toggleRecording()" aria-pressed="false">
+                <i class="fas fa-microphone text-2xl" id="recIcon"></i>
+                <span class="sr-only" id="recLabel">Start recording</span>
+            </button>
+        </div>
+        <p class="display num mt-6 text-5xl" id="recTimer">0:00</p>
+        <p class="mt-1 text-sm text-gray-500" id="recHint">Press to start recording</p>
 
+        <dl class="mt-8 grid w-full gap-2 text-left text-sm">
+            <div class="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
+                <dt class="flex items-center gap-2 text-gray-600"><i class="fas fa-microphone-lines w-4 text-gray-400"></i>Microphone</dt>
+                <dd id="micState" class="font-semibold text-gray-500">Not started</dd>
+            </div>
+            <div class="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
+                <dt class="flex items-center gap-2 text-gray-600"><i class="fas fa-brain w-4 text-gray-400"></i>Heart model</dt>
+                <dd id="modelState" class="font-semibold text-gray-500">Runs on this server</dd>
+            </div>
+        </dl>
+        <p class="mt-5 text-xs leading-relaxed text-gray-500">The model scores 5-second windows; very short or noisy recordings return NO RESULT. Quiet room, firm contact.</p>
+    </section>
+
+    <!-- Signal + result -->
+    <section class="grid content-start gap-6 lg:col-span-8">
+        <div class="card overflow-hidden" data-reveal>
+            <div class="card-head">
+                <h2 class="card-title"><i class="fas fa-wave-square"></i>Signal</h2>
+                <span class="status status--none" id="sigBadge"><span class="dot"></span>Idle</span>
+            </div>
+            <div class="scope" id="scope">
+                <canvas id="vis-canvas" aria-label="Live waveform of the microphone signal" role="img"></canvas>
+                <div class="scope-idle ecg-animate" id="scopeIdle" aria-hidden="true">
+                    {{ ui.ecg('h-16 w-56', 24, 24, 1.4) }}
+                    <p class="mt-2 text-sm">Live signal appears here while recording</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="status-display" class="hidden card overflow-hidden" aria-live="polite">
+            <div class="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+                <div class="min-w-0">
+                    <div id="result-badge"></div>
+                    <div class="display mt-3 text-[32px] leading-tight sm:text-[38px]" id="result-status">Analysing…</div>
+                    <div class="mt-2 text-sm text-gray-500" id="result-detail">Please wait</div>
+                </div>
+                <div class="shrink-0 text-left sm:text-right" id="result-score"></div>
+            </div>
+            <div class="meter mx-6 mb-6 hidden sm:mx-8" id="result-meter"><span></span></div>
+        </div>
+    </section>
+</div>
+
+<style>
+    .rec-wrap { position: relative; width: 132px; height: 132px; display: grid; place-items: center; }
+    .rec-btn { position: relative; z-index: 1; width: 112px; height: 112px; border-radius: 999px; display: grid; place-items: center;
+        background: rgb(var(--brand-700)); color: rgb(var(--brand-50)); box-shadow: 0 14px 30px -12px rgb(var(--brand-700) / .8), inset 0 1px 0 rgb(255 255 255 / .15);
+        transition: transform var(--t) var(--ease-out), background var(--t), box-shadow var(--t); }
+    :root[data-theme="dark"] .rec-btn { background: rgb(var(--brand-600)); }
+    .rec-btn:hover { transform: scale(1.04); }
+    .rec-btn:active { transform: scale(.97); }
+    .rec-ring { position: absolute; inset: 0; border-radius: 999px; border: 2px solid rgb(var(--refer-500)); opacity: 0; }
+    .is-recording .rec-btn { background: rgb(var(--refer-600)); color: rgb(var(--refer-50)); box-shadow: 0 14px 30px -12px rgb(var(--refer-600) / .8); }
+    .is-recording .rec-ring { animation: rec-ping 1.8s var(--ease-out) infinite; }
+    .is-recording .rec-ring.r2 { animation-delay: .9s; }
+    @keyframes rec-ping { 0% { transform: scale(.85); opacity: .7; } 100% { transform: scale(1.35); opacity: 0; } }
+    .is-busy .rec-btn { pointer-events: none; opacity: .7; }
+    .scope { position: relative; height: 320px; background:
+        linear-gradient(rgb(var(--g-200) / .5) 1px, transparent 1px) 0 0 / 100% 40px,
+        linear-gradient(90deg, rgb(var(--g-200) / .5) 1px, transparent 1px) 0 0 / 40px 100%; }
+    .scope canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .scope-idle { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; color: rgb(var(--g-400)); transition: opacity var(--t-slow); }
+    .scope.is-live .scope-idle { opacity: 0; }
+    #status-display.is-shown { animation: pop-in 600ms var(--ease-out) both; }
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    let isRecording = false;
-    let mediaRecorder;
-    let audioChunks = [];
-    let audioContext;
-    let analyser;
-    let canvas = document.getElementById('vis-canvas');
-    let ctx = canvas.getContext('2d');
-    let animationId;
+    let isRecording = false, mediaRecorder, audioChunks = [], audioContext, analyser, animationId, startedAt, timerId;
+    const canvas = document.getElementById('vis-canvas');
+    const ctx = canvas.getContext('2d');
+    const $ = (id) => document.getElementById(id);
+    const STATUS = {  // engine status -> portal outcome
+        ABNORMAL: { key: 'refer', label: 'REFER', title: 'Refer: abnormal heart sound' },
+        UNSURE: { key: 'unsure', label: 'UNSURE', title: 'Unsure: record again or refer' },
+        NORMAL: { key: 'clear', label: 'NO REFER', title: 'No abnormality detected' },
+    };
 
-    // Resize canvas
     function resizeCanvas() {
-        canvas.width = canvas.parentElement.clientWidth;
-        canvas.height = canvas.parentElement.clientHeight - 100; // Adjust for controls
+        const dpr = window.devicePixelRatio || 1, r = canvas.getBoundingClientRect();
+        canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    async function toggleRecording() {
-        const btn = document.getElementById('recordBtn');
-        const statusDiv = document.getElementById('status-display');
-        const resultStatus = document.getElementById('result-status');
-        const resultDetail = document.getElementById('result-detail');
+    function setBadge(el, key, text) {
+        el.className = `status status--${key}`; el.innerHTML = '<span class="dot"></span>';
+        el.append(document.createTextNode(text));
+    }
+    function tick() {
+        const s = Math.floor((Date.now() - startedAt) / 1000);
+        $('recTimer').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    }
 
+    function showResult(kind, title, detail, score) {
+        const box = $('status-display');
+        box.classList.remove('hidden', 'is-shown'); void box.offsetWidth; box.classList.add('is-shown');
+        box.className = box.className.replace(/\btone-\w+/g, '') + ` tone-${kind.key}`;
+        const b = document.createElement('span'); setBadge(b, kind.key, kind.label); b.classList.add('status-lg');
+        $('result-badge').replaceChildren(b);
+        $('result-status').textContent = title;
+        $('result-detail').textContent = detail;
+        const meter = $('result-meter');
+        if (score != null) {
+            $('result-score').innerHTML = `<p class="eyebrow">AI score</p><p class="mt-1 leading-none"><span class="display num text-[52px] tone-text" id="scoreNum">0</span><span class="text-sm text-gray-400"> / 100</span></p>`;
+            meter.classList.remove('hidden'); meter.firstElementChild.style.width = Math.min(100, score) + '%';
+            meter.firstElementChild.style.animation = 'none'; void meter.offsetWidth; meter.firstElementChild.style.animation = '';
+            const el = $('scoreNum');
+            if (window.Motion && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                Motion.animate(0, score, { duration: 1.1, ease: [0.22, 1, 0.36, 1], onUpdate: v => { el.textContent = Math.round(v); } });
+            } else { el.textContent = score; }
+        } else { $('result-score').innerHTML = ''; meter.classList.add('hidden'); }
+    }
+
+    async function toggleRecording() {
+        const btn = $('recordBtn'), wrap = $('recWrap');
         if (!isRecording) {
-            // Start Recording
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
                 audioChunks = [];
-
-                // Audio Context for Visualizer
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const source = audioContext.createMediaStreamSource(stream);
                 analyser = audioContext.createAnalyser();
                 analyser.fftSize = 2048;
                 source.connect(analyser);
+                $('scope').classList.add('is-live');
                 drawVisualizer();
 
                 mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
-
                 mediaRecorder.onstop = async () => {
                     cancelAnimationFrame(animationId);
                     stream.getTracks().forEach(track => track.stop());
-
-                    // Show Processing
-                    statusDiv.classList.remove('hidden');
-                    resultStatus.className = 'text-2xl font-bold text-yellow-500 animate-pulse';
-                    resultStatus.innerText = "PROCESSING DATA...";
-                    resultDetail.innerText = "SENDING TO NEURAL NETWORK";
-
-                    // Decode the recording to raw float32 PCM (the model needs samples, not webm/opus bytes)
+                    wrap.classList.add('is-busy'); $('micState').textContent = 'Stopped';
+                    setBadge($('sigBadge'), 'none', 'Analysing');
+                    $('recHint').textContent = 'Scoring the recording…';
+                    $('modelState').textContent = 'Scoring…';
+                    // Decode to raw float32 PCM (the model needs samples, not webm/opus bytes)
                     try {
                         const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
                         const decoded = await audioContext.decodeAudioData(await blob.arrayBuffer());
@@ -127,76 +181,62 @@
                             body: JSON.stringify({ audio: btoa(binary), sample_rate: decoded.sampleRate })
                         });
                         const data = await response.json();
-
-                        if (response.ok && data.status === 'analyzed' && data.data) {
-                            const ai = data.data;
-                            const abnormal = ai.status === 'ABNORMAL';
-                            resultStatus.className = abnormal ? 'text-4xl font-bold text-red' : 'text-4xl font-bold text-green';
-                            resultStatus.innerText = abnormal ? 'REFER: ABNORMAL' : 'NO ABNORMALITY DETECTED';
-                            resultDetail.innerText = `AI score ${ai.score}/100 - ${ai.n_windows} x 5 s windows - screening aid, not a diagnosis`;
-                            if (abnormal) btn.classList.add('danger');
+                        if (response.ok && data.status === 'analyzed' && data.data && STATUS[data.data.status]) {
+                            const ai = data.data, kind = STATUS[ai.status];
+                            showResult(kind, kind.title, `${ai.n_windows} × 5 s windows · model ${ai.model || ''} · screening aid, not a diagnosis`, ai.score);
+                            $('modelState').textContent = 'Scored';
                         } else {
-                            resultStatus.className = 'text-2xl font-bold text-yellow-500';
-                            resultStatus.innerText = 'NO RESULT';
-                            resultDetail.innerText = data.reason || data.error || 'Analysis failed';
+                            showResult({ key: 'none', label: 'NO RESULT' }, 'No result', data.reason || data.error || 'Analysis failed', null);
+                            $('modelState').textContent = response.status === 503 ? 'Unavailable' : 'No result';
                         }
                     } catch (err) {
-                        resultStatus.innerText = 'NO RESULT';
-                        resultDetail.innerText = 'Could not decode the recording: ' + err;
+                        showResult({ key: 'none', label: 'NO RESULT' }, 'No result', 'Could not decode the recording: ' + err, null);
+                        $('modelState').textContent = 'No result';
                     }
+                    wrap.classList.remove('is-busy'); setBadge($('sigBadge'), 'none', 'Idle');
+                    $('recHint').textContent = 'Press to record again';
                 };
 
                 mediaRecorder.start();
                 isRecording = true;
-                btn.innerText = "⏹ STOP SCAN";
-                btn.classList.add('pulse-critical');
-                statusDiv.classList.add('hidden');
-
+                wrap.classList.add('is-recording'); btn.setAttribute('aria-pressed', 'true');
+                $('recIcon').className = 'fas fa-stop text-2xl'; $('recLabel').textContent = 'Stop recording';
+                $('recHint').textContent = 'Recording… press to stop';
+                $('micState').textContent = 'Listening'; $('micState').className = 'font-semibold text-clear-700';
+                setBadge($('sigBadge'), 'refer', 'Recording');
+                $('status-display').classList.add('hidden');
+                startedAt = Date.now(); tick(); timerId = setInterval(tick, 250);
             } catch (err) {
-                console.error("Mic Error:", err);
-                alert("Microphone access required.");
+                console.error('Mic Error:', err);
+                $('micState').textContent = 'Blocked'; $('micState').className = 'font-semibold text-red-600';
+                window.ishtirafToast('Microphone access is required. Allow it in the browser and try again.', 'error');
             }
         } else {
-            // Stop Recording
             mediaRecorder.stop();
-            isRecording = false;
-            btn.innerText = "▶ INITIATE SCAN";
-            btn.classList.remove('pulse-critical');
+            isRecording = false; clearInterval(timerId);
+            wrap.classList.remove('is-recording'); btn.setAttribute('aria-pressed', 'false');
+            $('recIcon').className = 'fas fa-microphone text-2xl'; $('recLabel').textContent = 'Start recording';
+            $('scope').classList.remove('is-live');
         }
     }
 
     function drawVisualizer() {
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-
+        const data = new Uint8Array(analyser.fftSize);
+        const line = window.ishtirafColor('brand-500'), glow = window.ishtirafColor('brand-400', 0.5);
         const draw = () => {
             animationId = requestAnimationFrame(draw);
-            analyser.getByteTimeDomainData(dataArray);
-
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Fade effect
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = '#00F3FF';
-            ctx.beginPath();
-
-            const sliceWidth = canvas.width * 1.0 / bufferLength;
-            let x = 0;
-
-            for (let i = 0; i < bufferLength; i++) {
-                const v = dataArray[i] / 128.0;
-                const y = v * canvas.height / 2;
-
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-
-                x += sliceWidth;
+            analyser.getByteTimeDomainData(data);
+            const w = canvas.clientWidth, h = canvas.clientHeight;
+            ctx.clearRect(0, 0, w, h);
+            ctx.lineWidth = 2; ctx.strokeStyle = line; ctx.shadowColor = glow; ctx.shadowBlur = 10;
+            ctx.lineJoin = 'round'; ctx.beginPath();
+            const step = w / data.length;
+            for (let i = 0; i < data.length; i++) {
+                const y = (data[i] / 128.0) * h / 2;
+                i === 0 ? ctx.moveTo(0, y) : ctx.lineTo(i * step, y);
             }
-
-            ctx.lineTo(canvas.width, canvas.height / 2);
             ctx.stroke();
         };
-
         draw();
     }
 </script>

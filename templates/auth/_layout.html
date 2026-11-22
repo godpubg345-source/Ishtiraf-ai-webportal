@@ -1,0 +1,70 @@
+{% import "partials/ui.html" as ui with context %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <title>{% block title %}IshtirafAI{% endblock %}</title>
+    {% include "partials/head.html" %}
+</head>
+<body class="min-h-dvh">
+<div class="grid min-h-dvh lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+    <!-- Form side -->
+    <div class="flex flex-col px-5 py-6 sm:px-10">
+        <div class="flex items-center justify-between">
+            <a href="{{ url_for('auth.login') }}" class="brand-lockup">{{ ui.logo(34) }}{{ ui.wordmark() }}</a>
+            <button class="icon-btn theme-switch" onclick="toggleTheme()" aria-label="Switch light or dark theme"><i class="fas fa-sun sun"></i><i class="fas fa-moon moon"></i></button>
+        </div>
+        <main id="main" class="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center py-12">
+            <p class="eyebrow" data-reveal>{% block eyebrow %}Clinician portal{% endblock %}</p>
+            <h1 class="display mt-3 text-[44px] text-gray-900 sm:text-[52px]" data-reveal>{% block heading %}{% endblock %}</h1>
+            <p class="mt-3 text-gray-500" data-reveal>{% block lede %}{% endblock %}</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="mt-6 space-y-2">
+                {% for category, message in messages %}
+                <div class="alert {{ 'tone-clear' if category == 'success' else ('tone-brand' if category == 'info' else 'tone-refer') }}" role="alert">
+                    <i class="fas {{ 'fa-circle-check' if category == 'success' else ('fa-circle-info' if category == 'info' else 'fa-circle-exclamation') }}"></i>
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <div class="mt-8" data-reveal>{% block form %}{% endblock %}</div>
+            <div class="mt-8 text-sm text-gray-500" data-reveal>{% block below %}{% endblock %}</div>
+        </main>
+        <p class="text-xs text-gray-400">Screening aid only, not a diagnosis.</p>
+    </div>
+
+    <!-- Story side -->
+    <aside class="auth-story relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between lg:p-12" aria-hidden="true">
+        <div class="auth-grid absolute inset-0"></div>
+        <div class="relative">
+            <p class="eyebrow" style="color: rgb(var(--brand-300))">IshtirafAI V2</p>
+            <p class="display mt-4 max-w-[15ch] text-[58px] leading-[1.02]">Listen to the heart. <em style="color: rgb(var(--brand-300))">Know who to refer.</em></p>
+        </div>
+
+        <div class="relative">
+            <div class="auth-trace ecg-animate">
+                <svg viewBox="0 0 600 140" preserveAspectRatio="none" class="h-36 w-full">
+                    <path class="ecg-path" pathLength="1" style="stroke-width:2.5" vector-effect="non-scaling-stroke"
+                        d="M0 70H70l10-46 16 92 12-46h40l8-24 9 48 7-24h70l10-46 16 92 12-46h40l8-24 9 48 7-24h70l10-46 16 92 12-46h40l8-24 9 48 7-24h30"/>
+                </svg>
+            </div>
+            <ul class="mt-10 grid gap-5 text-[15px]" style="color: rgb(var(--brand-100))">
+                <li class="flex gap-3"><i class="fas fa-microchip mt-1 w-4" style="color: rgb(var(--brand-300))"></i>Runs offline on a Raspberry Pi 5 stethoscope.</li>
+                <li class="flex gap-3"><i class="fas fa-signature mt-1 w-4" style="color: rgb(var(--brand-300))"></i>Every result arrives as a device-signed QR (Ed25519).</li>
+                <li class="flex gap-3"><i class="fas fa-code-branch mt-1 w-4" style="color: rgb(var(--brand-300))"></i>Four honest outcomes: REFER, UNSURE, NO REFER, NO RESULT.</li>
+            </ul>
+        </div>
+    </aside>
+</div>
+<style>
+    /* The story panel stays deep teal in both themes (a fixed brand surface). */
+    .auth-story { background: #04393b; color: #e6f7f7; --brand-100: 205 240 241; --brand-300: 120 214 219; }
+    .auth-grid { background-image: linear-gradient(rgb(255 255 255 / .07) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / .07) 1px, transparent 1px); background-size: 28px 28px; -webkit-mask-image: radial-gradient(ellipse at 60% 45%, #000 15%, transparent 72%); mask-image: radial-gradient(ellipse at 60% 45%, #000 15%, transparent 72%); }
+    .auth-trace { color: rgb(var(--brand-300)); filter: drop-shadow(0 0 14px rgb(120 214 219 / .45)); }
+</style>
+</body>
+</html>

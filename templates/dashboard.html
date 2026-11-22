@@ -1,279 +1,246 @@
 {% extends "base.html" %}
+{% import "partials/ui.html" as ui with context %}
 
-{% block title %}IshtirafAI - Mission Control{% endblock %}
+{% block title %}Overview · IshtirafAI{% endblock %}
+{% block crumbs %}<b>Overview</b>{% endblock %}
 
 {% block content %}
-<!-- Dashboard Header with Quick Stats -->
-<div class="dashboard-grid mb-8">
-    <!-- Total Patients Card -->
-    <div class="col-span-3">
-        <div class="stat-card info">
-            <div class="icon info"><i class="fas fa-users"></i></div>
-            <div class="value">{{ patients|length }}</div>
-            <div class="label">Total Patients</div>
-            <div class="trend up"><i class="fas fa-arrow-up"></i> Database Online</div>
-        </div>
-    </div>
+{# Every number on this page is counted from saved results; nothing is simulated. #}
+{% set rows = [] %}
+{% for p in patients %}{% for d in p.diagnoses %}
+{% set _ = rows.append({'p': p, 'd': d, 'k': ui.status_key(d.diagnosis_result)|trim}) %}
+{% endfor %}{% endfor %}
+{% set rows = rows|sort(attribute='d.timestamp', reverse=True) %}
+{% set n_refer = rows|selectattr('k', 'equalto', 'refer')|list|length %}
+{% set n_unsure = rows|selectattr('k', 'equalto', 'unsure')|list|length %}
+{% set n_clear = rows|selectattr('k', 'equalto', 'clear')|list|length %}
 
-    <!-- Critical Cases Card -->
-    <div class="col-span-3">
-        <div class="stat-card danger">
-            <div class="icon danger"><i class="fas fa-exclamation-triangle"></i></div>
-            <div class="value">{{ critical_count }}</div>
-            <div class="label">Critical Cases</div>
-            <div class="trend down"><i class="fas fa-circle"></i> Attention Required</div>
-        </div>
+<div class="page-header">
+    <div data-reveal>
+        <p class="eyebrow">{{ user.name if user else current_user.name }}</p>
+        <h1 class="page-title mt-1">Clinic overview</h1>
+        <p class="page-sub">Screening results saved from IshtirafAI devices.</p>
     </div>
-
-    <!-- Average Risk Score Card -->
-    <div class="col-span-3">
-        <div class="stat-card warning">
-            <div class="icon warning"><i class="fas fa-chart-line"></i></div>
-            <div class="value">{{ avg_risk }}</div>
-            <div class="label">Avg Risk Score</div>
-            <div class="metric-progress mt-2">
-                <div class="bar {{ 'red' if avg_risk > 5 else 'cyan' }}" style="width: {{ avg_risk * 10 }}%;"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Action Card -->
-    <div class="col-span-3">
-        <div class="action-card" onclick="window.location.href='{{ url_for('realtime.analyzer') }}'">
-            <i class="fas fa-plus-circle"></i>
-            <div class="font-bold">New Scan</div>
-            <div class="text-sm text-gray-500">Start AI Analysis</div>
-        </div>
+    <div class="flex gap-2" data-reveal>
+        <a href="{{ url_for('register_patient') }}" class="btn btn-secondary"><i class="fas fa-user-plus text-sm"></i> Register patient</a>
+        <a href="{{ url_for('qr_scanner') }}" class="btn btn-primary"><i class="fas fa-qrcode text-sm"></i> Scan device QR</a>
     </div>
 </div>
 
-<!-- Charts Row -->
-<div class="dashboard-grid mb-8">
-    <!-- Weekly Trends Chart -->
-    <div class="col-span-8">
-        <div class="chart-card">
-            <h3><i class="fas fa-chart-area mr-2"></i>Weekly Diagnosis Trends</h3>
-            <div class="chart-container">
-                <canvas id="weeklyTrendsChart"></canvas>
+<!-- Stat tiles -->
+<section class="grid grid-cols-2 gap-4 xl:grid-cols-4" aria-label="Summary">
+    <div class="card stat" data-reveal>
+        <div class="label"><span class="chip tone-brand tone-bg"><i class="fas fa-users"></i></span>Patients</div>
+        <div class="value" data-count="{{ patients|length }}">{{ patients|length }}</div>
+        <div class="foot">{{ rows|length }} saved result{{ '' if rows|length == 1 else 's' }}</div>
+    </div>
+    <div class="card stat" data-reveal>
+        <div class="label"><span class="chip tone-refer tone-bg"><i class="fas fa-heart-crack"></i></span>Refer</div>
+        <div class="value" data-count="{{ n_refer }}">{{ n_refer }}</div>
+        <div class="foot">Need clinical review</div>
+    </div>
+    <div class="card stat" data-reveal>
+        <div class="label"><span class="chip tone-unsure tone-bg"><i class="fas fa-wave-square"></i></span>Unsure</div>
+        <div class="value" data-count="{{ n_unsure }}">{{ n_unsure }}</div>
+        <div class="foot">Record again, then refer</div>
+    </div>
+    <div class="card stat" data-reveal>
+        <div class="label"><span class="chip tone-clear tone-bg"><i class="fas fa-heart"></i></span>No refer</div>
+        <div class="value" data-count="{{ n_clear }}">{{ n_clear }}</div>
+        <div class="foot">No abnormality detected</div>
+    </div>
+</section>
+
+<!-- Charts -->
+<section class="mt-5 grid gap-5 xl:grid-cols-3">
+    <div class="card xl:col-span-2" data-reveal>
+        <div class="card-head">
+            <h2 class="card-title"><i class="fas fa-chart-column"></i>Results, last 14 days</h2>
+            <div class="legend">
+                <span class="tone-refer"><i></i>Refer</span><span class="tone-unsure"><i></i>Unsure</span><span class="tone-clear"><i></i>No refer</span>
             </div>
-            <div class="chart-legend">
-                <div class="legend-item">
-                    <span class="legend-dot" style="background: #06b6d4;"></span>
-                    Normal
-                </div>
-                <div class="legend-item">
-                    <span class="legend-dot" style="background: #ef4444;"></span>
-                    Abnormal
-                </div>
+        </div>
+        <div class="card-pad">
+            <div class="chart-box" id="trendBox">
+                <div class="skeleton"></div>
+                <canvas id="trendChart" role="img" aria-label="Stacked bars of results per day for the last 14 days"></canvas>
             </div>
         </div>
     </div>
-
-    <!-- Diagnosis Distribution -->
-    <div class="col-span-4">
-        <div class="chart-card">
-            <h3><i class="fas fa-pie-chart mr-2"></i>Diagnosis Distribution</h3>
-            <div class="chart-container">
-                <canvas id="distributionChart"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Recent Activity & Performance Row -->
-<div class="dashboard-grid mb-8">
-    <!-- Recent Diagnoses Table -->
-    <div class="col-span-8">
-        <div class="chart-card">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="mb-0"><i class="fas fa-list mr-2"></i>Recent Diagnoses</h3>
-                <div class="flex gap-2">
-                    <input type="text" id="searchInput" placeholder="Search ID..."
-                        class="bg-gray-100 border border-gray-200 px-3 py-1 text-sm rounded focus:border-cyan-500 outline-none">
-                    <button class="btn-sci-fi text-xs py-1 px-3" onclick="filterTable()">Filter</button>
+    <div class="card" data-reveal>
+        <div class="card-head"><h2 class="card-title"><i class="fas fa-circle-half-stroke"></i>Outcome mix</h2></div>
+        <div class="card-pad">
+            {% if rows %}
+            <div class="chart-box !h-[200px]" id="mixBox">
+                <div class="skeleton !rounded-full mx-auto aspect-square !h-full !w-auto"></div>
+                <canvas id="mixChart" role="img" aria-label="Share of results by outcome"></canvas>
+                <div class="pointer-events-none absolute inset-0 grid place-items-center text-center">
+                    <div><div class="display text-4xl num">{{ rows|length }}</div><div class="text-xs text-gray-500">results</div></div>
                 </div>
             </div>
-
-            <div class="overflow-x-auto">
-                <table class="login-history-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Timestamp</th>
-                            <th>Result</th>
-                            <th>Confidence</th>
-                            <th>Risk</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="diagnosisTable">
-                        {% for patient in patients[:10] %}
-                        {% for diagnosis in patient.diagnoses[-1:] %}
-                        <tr>
-                            <td class="font-mono text-sm text-gray-500">{{ diagnosis.diagnosis_id }}</td>
-                            <td class="font-semibold">{{ patient.name }}</td>
-                            <td class="text-gray-500">{{ diagnosis.timestamp.strftime('%Y-%m-%d %H:%M') if
-                                diagnosis.timestamp else 'N/A' }}</td>
-                            <td>
-                                {% if "NORMAL" in diagnosis.diagnosis_result %}
-                                <span
-                                    class="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">NORMAL</span>
-                                {% else %}
-                                <span
-                                    class="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 pulse-critical">ABNORMAL</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div class="flex items-center gap-2">
-                                    <div class="w-12 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                        <div class="h-full bg-cyan-500"
-                                            style="width: {{ (diagnosis.confidence or 0) * 100 }}%;"></div>
-                                    </div>
-                                    <span class="text-xs font-semibold">{{ ((diagnosis.confidence or 0) * 100)|round|int
-                                        }}%</span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="flex items-center gap-2">
-                                    <span
-                                        class="font-bold {{ 'text-red-500' if diagnosis.risk_score > 5 else 'text-cyan-500' }}">
-                                        {{ diagnosis.risk_score }}
-                                    </span>
-                                    <div class="w-12 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                        <div class="h-full {{ 'bg-red-500' if diagnosis.risk_score > 5 else 'bg-cyan-500' }}"
-                                            style="width: {{ diagnosis.risk_score * 10 }}%;"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="flex gap-2">
-                                <a href="{{ url_for('patient_detail', id=patient.id) }}"
-                                    class="text-cyan-500 hover:text-cyan-700" title="View Details">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="{{ url_for('export_pdf', diagnosis_id=diagnosis.id) }}"
-                                    class="text-purple-500 hover:text-purple-700" title="Download PDF">
-                                    <i class="fas fa-file-pdf"></i>
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Activity Timeline -->
-    <div class="col-span-4">
-        <div class="chart-card">
-            <h3><i class="fas fa-stream mr-2"></i>Recent Activity</h3>
-            <div class="activity-timeline mt-4">
-                {% for patient in patients[:5] %}
-                {% for diagnosis in patient.diagnoses[-1:] %}
-                <div class="activity-item {{ 'critical' if diagnosis.risk_score > 5 else 'success' }}">
-                    <div class="activity-time">{{ diagnosis.timestamp.strftime('%H:%M') if diagnosis.timestamp else
-                        'N/A' }}</div>
-                    <div class="activity-text">
-                        <strong>{{ patient.name }}</strong> -
-                        {{ diagnosis.diagnosis_result[:30] }}
-                    </div>
+            <dl class="mt-5 grid gap-2 text-sm">
+                {% for k, n in [('refer', n_refer), ('unsure', n_unsure), ('clear', n_clear)] %}
+                <div class="flex items-center justify-between">
+                    <dt>{{ ui.status_badge({'refer': 'REFER', 'unsure': 'UNSURE', 'clear': 'NO REFER'}[k]) }}</dt>
+                    <dd class="num font-semibold">{{ n }} <span class="font-normal text-gray-500">· {{ ((n / rows|length) * 100)|round|int }}% of results</span></dd>
                 </div>
                 {% endfor %}
-                {% endfor %}
-            </div>
+            </dl>
+            {% else %}
+            <div class="empty-state"><i class="fas fa-chart-pie"></i><p class="title">No results yet</p><p class="text-sm">Scan a device QR to save the first one.</p></div>
+            {% endif %}
         </div>
     </div>
-</div>
+</section>
 
-<!-- Performance Metrics -->
-<div class="dashboard-grid">
-    <div class="col-span-12">
-        <div class="chart-card">
-            <h3><i class="fas fa-tachometer-alt mr-2"></i>AI Performance Metrics</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
-                <div class="metric-bar">
-                    <span class="metric-label">Accuracy</span>
-                    <div class="metric-progress">
-                        <div class="bar green" style="width: 94%;"></div>
-                    </div>
-                    <span class="metric-value text-green-500">94%</span>
-                </div>
-                <div class="metric-bar">
-                    <span class="metric-label">Sensitivity</span>
-                    <div class="metric-progress">
-                        <div class="bar cyan" style="width: 91%;"></div>
-                    </div>
-                    <span class="metric-value text-cyan-500">91%</span>
-                </div>
-                <div class="metric-bar">
-                    <span class="metric-label">Specificity</span>
-                    <div class="metric-progress">
-                        <div class="bar purple" style="width: 88%;"></div>
-                    </div>
-                    <span class="metric-value text-purple-500">88%</span>
-                </div>
-                <div class="metric-bar">
-                    <span class="metric-label">Avg Response</span>
-                    <div class="metric-progress">
-                        <div class="bar cyan" style="width: 95%;"></div>
-                    </div>
-                    <span class="metric-value text-cyan-500">1.2s</span>
-                </div>
-            </div>
+<!-- Recent results + guide -->
+<section class="mt-5 grid gap-5 xl:grid-cols-3">
+    <div class="card overflow-hidden xl:col-span-2" data-reveal>
+        <div class="card-head flex-wrap">
+            <h2 class="card-title"><i class="fas fa-list-ul"></i>Recent results</h2>
+            <label class="relative w-full sm:w-64">
+                <span class="sr-only">Search results</span>
+                <i class="fas fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-gray-400"></i>
+                <input type="search" id="searchInput" placeholder="Search name, ID or result" class="!min-h-[38px] !py-2 !pl-9 !text-sm">
+            </label>
         </div>
+        {% if rows %}
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Patient</th><th>Result</th><th class="hidden sm:table-cell">AI score</th><th class="hidden md:table-cell">Recorded</th><th class="hidden text-right sm:table-cell"><span class="sr-only">Actions</span></th></tr>
+                </thead>
+                <tbody id="diagnosisTable">
+                    {% for r in rows[:12] %}
+                    {% set d = r.d %}
+                    <tr class="row-link" data-href="{{ url_for('patient_detail', id=r.p.id) }}">
+                        <td>
+                            <div class="flex items-center gap-3">
+                                <div class="avatar h-9 w-9 shrink-0 text-xs">{{ ui.initials(r.p.name) }}</div>
+                                <div class="min-w-0">
+                                    <a href="{{ url_for('patient_detail', id=r.p.id) }}" class="block truncate font-semibold text-gray-900 hover:underline">{{ r.p.name }}</a>
+                                    <div class="mono truncate text-xs text-gray-500">{{ d.diagnosis_id }}<span class="md:hidden"> · {{ d.timestamp.strftime('%d %b') }}</span></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ ui.status_badge(d.diagnosis_result) }}</td>
+                        <td class="hidden sm:table-cell tone-{{ r.k }}">
+                            {% if d.risk_score is not none %}
+                            <div class="flex items-center gap-3">
+                                <span class="num w-8 font-semibold text-gray-900">{{ (d.risk_score * 10)|round|int }}</span>
+                                <div class="meter w-16" title="AI score {{ (d.risk_score * 10)|round|int }}/100 (not a probability)"><span style="width: {{ [d.risk_score * 10, 100]|min }}%"></span></div>
+                            </div>
+                            {% else %}<span class="text-gray-400">—</span>{% endif %}
+                        </td>
+                        <td class="hidden whitespace-nowrap text-gray-500 md:table-cell"><span class="num">{{ d.timestamp.strftime('%d %b, %H:%M') }}</span></td>
+                        <td class="hidden text-right sm:table-cell">
+                            <a href="{{ url_for('export_pdf', diagnosis_id=d.id) }}" class="icon-btn h-9 w-9" title="Download PDF report" aria-label="Download PDF report for {{ r.p.name }}"><i class="far fa-file-pdf"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div id="noMatch" class="empty-state hidden"><i class="fas fa-magnifying-glass"></i><p class="title">No matching results</p></div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-stethoscope"></i>
+            <p class="title">No results saved yet</p>
+            <p class="max-w-sm text-sm">Record on the IshtirafAI device, then scan its QR here to save the result to a patient.</p>
+            <a href="{{ url_for('qr_scanner') }}" class="btn btn-primary btn-sm mt-3"><i class="fas fa-qrcode"></i> Scan device QR</a>
+        </div>
+        {% endif %}
     </div>
-</div>
 
+    <div class="card card-pad" data-reveal>
+        <h2 class="card-title"><i class="fas fa-book-medical"></i>Reading a result</h2>
+        <ul class="mt-4 grid gap-4 text-sm">
+            <li class="flex gap-3"><span class="mt-0.5">{{ ui.status_badge('REFER') }}</span><span class="text-gray-600">Abnormal heart sound. Refer for clinical review and echo.</span></li>
+            <li class="flex gap-3"><span class="mt-0.5">{{ ui.status_badge('UNSURE') }}</span><span class="text-gray-600">Between cut-offs. Record again; if still unsure, refer.</span></li>
+            <li class="flex gap-3"><span class="mt-0.5">{{ ui.status_badge('NO REFER') }}</span><span class="text-gray-600">No abnormality detected. Refer anyway if symptoms suggest it.</span></li>
+            <li class="flex gap-3"><span class="mt-0.5">{{ ui.status_badge('') }}</span><span class="text-gray-600">Recording unusable or model unavailable. Record again.</span></li>
+        </ul>
+        <p class="mt-5 rounded-xl bg-gray-100 p-3 text-xs leading-relaxed text-gray-600">
+            The AI score (0–100) is not a probability or a confidence. It is a screening aid, not a diagnosis.
+        </p>
+    </div>
+</section>
+<script type="application/json" id="resultData">{{ rows|map(attribute='d')|map(attribute='timestamp')|map('string')|list|tojson }}</script>
+<script type="application/json" id="resultKeys">{{ rows|map(attribute='k')|list|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
 <script>
-    // Initialize charts after DOM loads
-    document.addEventListener('DOMContentLoaded', function () {
-        // Weekly Trends Line Chart
-        createLineChart('weeklyTrendsChart',
-            ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            [
-                {
-                    label: 'Normal',
-                    data: [12, 15, 8, 18, 14, 9, 11],
-                    borderColor: '#06b6d4',
-                    backgroundColor: 'rgba(6, 182, 212, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                },
-                {
-                    label: 'Abnormal',
-                    data: [3, 5, 2, 7, 4, 2, 3],
-                    borderColor: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }
-            ]
-        );
-
-        // Distribution Doughnut Chart
-        createDoughnutChart('distributionChart',
-            ['Normal', 'Cardiac', 'Pulmonary', 'Critical'],
-            [65, 15, 12, 8],
-            ['#10b981', '#8b5cf6', '#06b6d4', '#ef4444']
-        );
+(function () {
+    // Row click opens the patient (links inside the row keep their own behaviour).
+    document.querySelectorAll('tr.row-link').forEach(function (tr) {
+        tr.addEventListener('click', function (e) { if (!e.target.closest('a,button')) location.href = tr.dataset.href; });
     });
 
-    // Table search filter
-    function filterTable() {
-        const searchValue = document.getElementById('searchInput').value.toLowerCase();
-        const rows = document.querySelectorAll('#diagnosisTable tr');
-
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchValue) ? '' : 'none';
+    // Live search (same #searchInput / #diagnosisTable ids as v1).
+    window.filterTable = function () {
+        var q = (document.getElementById('searchInput').value || '').toLowerCase(), shown = 0;
+        document.querySelectorAll('#diagnosisTable tr').forEach(function (row) {
+            var hit = row.textContent.toLowerCase().indexOf(q) !== -1;
+            row.style.display = hit ? '' : 'none'; if (hit) shown++;
         });
-    }
+        var nm = document.getElementById('noMatch'); if (nm) nm.classList.toggle('hidden', shown > 0);
+    };
+    var s = document.getElementById('searchInput'); if (s) s.addEventListener('input', window.filterTable);
 
-    // Add enter key listener for search
-    document.getElementById('searchInput')?.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') filterTable();
+    if (!window.Chart) return;
+    var times = JSON.parse(document.getElementById('resultData').textContent);
+    var keys = JSON.parse(document.getElementById('resultKeys').textContent);
+    // Status colours validated for colour-blind separation (light and dark picked separately).
+    var PAL = {
+        light: { refer: '#C53133', unsure: '#E1973E', clear: '#086C36' },
+        dark: { refer: '#E5514E', unsure: '#925B0B', clear: '#3DA160' }
+    };
+    var ORDER = ['refer', 'unsure', 'clear'], NAMES = { refer: 'Refer', unsure: 'Unsure', clear: 'No refer' };
+    var days = [], counts = {}, today = new Date(); today.setHours(0, 0, 0, 0);
+    for (var i = 13; i >= 0; i--) { var d = new Date(today); d.setDate(d.getDate() - i); days.push(d); }
+    ORDER.forEach(function (k) { counts[k] = days.map(function () { return 0; }); });
+    times.forEach(function (t, idx) {
+        var d = new Date(t.replace(' ', 'T')); d.setHours(0, 0, 0, 0);
+        var j = Math.round((d - days[0]) / 864e5);
+        if (j >= 0 && j < 14 && counts[keys[idx]]) counts[keys[idx]][j]++;
     });
+    var charts = [];
+    function draw() {
+        charts.forEach(function (c) { c.destroy(); }); charts = [];
+        window.ishtirafChartDefaults();
+        var pal = PAL[document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'];
+        var surface = window.ishtirafColor('surface');
+        charts.push(new Chart(document.getElementById('trendChart'), {
+            type: 'bar',
+            data: {
+                labels: days.map(function (d) { return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); }),
+                datasets: ORDER.map(function (k) {
+                    return { label: NAMES[k], data: counts[k], backgroundColor: pal[k], borderColor: surface, borderWidth: { top: 2 },
+                             borderRadius: 4, borderSkipped: false, maxBarThickness: 26 };
+                })
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                scales: { x: { stacked: true, grid: { display: false }, ticks: { maxRotation: 0, autoSkipPadding: 12 } },
+                          y: { stacked: true, beginAtZero: true, ticks: { precision: 0 }, grid: { color: window.ishtirafColor('g-200', .6) }, border: { display: false } } },
+                animation: { onComplete: function () { document.getElementById('trendBox').classList.add('is-ready'); } }
+            }
+        }));
+        var mix = document.getElementById('mixChart');
+        if (mix) charts.push(new Chart(mix, {
+            type: 'doughnut',
+            data: { labels: ORDER.map(function (k) { return NAMES[k]; }),
+                    datasets: [{ data: ORDER.map(function (k) { return keys.filter(function (x) { return x === k; }).length; }),
+                                 backgroundColor: ORDER.map(function (k) { return pal[k]; }), borderColor: surface, borderWidth: 2, hoverOffset: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '74%',
+                       animation: { animateRotate: true, onComplete: function () { document.getElementById('mixBox').classList.add('is-ready'); } } }
+        }));
+        // Reduced motion: no animation, so onComplete may not fire; reveal anyway.
+        setTimeout(function () { document.querySelectorAll('.chart-box').forEach(function (b) { b.classList.add('is-ready'); }); }, 1200);
+    }
+    draw();
+    document.addEventListener('themechange', function () { setTimeout(draw, 30); });
+})();
 </script>
 {% endblock %}

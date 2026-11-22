@@ -1,101 +1,77 @@
 {% extends "base.html" %}
 
-{% block title %}Register New Patient - IshtirafAI{% endblock %}
+{% block title %}Register patient · IshtirafAI{% endblock %}
+{% block crumbs %}<a href="{{ url_for('dashboard') }}" class="hover:text-gray-900">Overview</a><i class="fas fa-chevron-right text-[10px] text-gray-400"></i><b>Register patient</b>{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
-    <!-- Header -->
-    <div class="text-center mb-10">
-        <div
-            class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 mb-4 shadow-lg">
-            <i class="fas fa-user-plus text-3xl text-white"></i>
+<div class="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div>
+        <div class="page-header !mt-3" data-reveal>
+            <div>
+                <p class="eyebrow">New record</p>
+                <h1 class="page-title mt-1">Register a patient</h1>
+                <p class="page-sub">Name, age and gender are required. Everything else can wait.</p>
+            </div>
         </div>
-        <h1 class="text-3xl font-bold text-gray-800">Register New Patient</h1>
-        <p class="text-gray-500 mt-2">Enter patient details to generate a unique Patient ID</p>
-    </div>
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    {% for category, message in messages %}
-    <div
-        class="mb-6 p-4 rounded-xl {{ 'bg-green-100 text-green-700 border border-green-200' if category == 'success' else 'bg-red-100 text-red-700 border border-red-200' }}">
-        <i class="fas {{ 'fa-check-circle' if category == 'success' else 'fa-exclamation-circle' }} mr-2"></i>
-        {{ message }}
-    </div>
-    {% endfor %}
-    {% endif %}
-    {% endwith %}
-
-    <!-- Registration Form -->
-    <div class="glass-panel p-8">
-        <form method="POST" action="{{ url_for('register_patient') }}" class="space-y-6">
-
-            <!-- Name -->
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">
-                    <i class="fas fa-user text-blue-500 mr-2"></i>Full Name *
-                </label>
-                <input type="text" name="name" required placeholder="e.g., Ali Khan" class="w-full text-lg">
-            </div>
-
-            <!-- Age & Gender Row -->
-            <div class="grid grid-cols-2 gap-6">
+        <form method="POST" action="{{ url_for('register_patient') }}" class="card" data-reveal>
+            <div class="grid gap-5 p-6 sm:p-8">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">
-                        <i class="fas fa-birthday-cake text-purple-500 mr-2"></i>Age *
-                    </label>
-                    <input type="number" name="age" required min="0" max="120" placeholder="45" class="w-full text-lg">
+                    <label for="name" class="mb-1.5 block text-sm font-medium">Full name <span class="text-red-600">*</span></label>
+                    <input id="name" type="text" name="name" required autocomplete="off" placeholder="e.g. Ali Khan">
+                </div>
+                <div class="grid gap-5 sm:grid-cols-2">
+                    <div>
+                        <label for="age" class="mb-1.5 block text-sm font-medium">Age <span class="text-red-600">*</span></label>
+                        <input id="age" type="number" name="age" required min="0" max="120" inputmode="numeric" placeholder="45">
+                    </div>
+                    <div>
+                        <label for="gender" class="mb-1.5 block text-sm font-medium">Gender <span class="text-red-600">*</span></label>
+                        <select id="gender" name="gender" required>
+                            <option value="">Select…</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">
-                        <i class="fas fa-venus-mars text-pink-500 mr-2"></i>Gender *
-                    </label>
-                    <select name="gender" required class="w-full text-lg">
-                        <option value="">Select...</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                    </select>
+                    <label for="contact" class="mb-1.5 block text-sm font-medium">Contact number</label>
+                    <input id="contact" type="tel" name="contact" inputmode="tel" placeholder="0300-1234567">
+                    <p class="mt-1.5 text-xs text-gray-500">Name + contact is how a device result is matched to this patient later.</p>
+                </div>
+                <div>
+                    <label for="medical_history" class="mb-1.5 block text-sm font-medium">Known conditions <span class="font-normal text-gray-400">(optional)</span></label>
+                    <textarea id="medical_history" name="medical_history" rows="3" placeholder="e.g. diabetes, hypertension, previous surgery"></textarea>
                 </div>
             </div>
-
-            <!-- Contact -->
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">
-                    <i class="fas fa-phone text-green-500 mr-2"></i>Contact Number
-                </label>
-                <input type="tel" name="contact" placeholder="0300-1234567" class="w-full text-lg">
+            <div class="flex flex-col-reverse gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-8 rounded-b-[18px]">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">Cancel</a>
+                <button type="submit" class="btn btn-primary" data-loading>
+                    <span class="spinner" aria-hidden="true"></span><i class="fas fa-id-card text-sm"></i><span>Register patient</span>
+                </button>
             </div>
-
-            <!-- Medical History (Optional) -->
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">
-                    <i class="fas fa-notes-medical text-red-500 mr-2"></i>Known Conditions (Optional)
-                </label>
-                <textarea name="medical_history" rows="3"
-                    placeholder="e.g., Diabetes, Hypertension, Previous surgeries..." class="w-full"></textarea>
-            </div>
-
-            <!-- Divider -->
-            <div class="border-t border-gray-200 pt-6"></div>
-
-            <!-- Submit Button -->
-            <button type="submit" class="w-full btn-primary py-4 text-lg font-bold rounded-xl shadow-lg">
-                <i class="fas fa-id-card mr-2"></i> Generate Patient ID
-            </button>
         </form>
     </div>
 
-    <!-- Info Box -->
-    <div class="mt-8 bg-blue-50 border border-blue-100 rounded-xl p-6">
-        <h3 class="font-bold text-blue-800 mb-2"><i class="fas fa-info-circle mr-2"></i>What happens next?</h3>
-        <ol class="text-sm text-blue-700 space-y-2 list-decimal list-inside">
-            <li>A unique <strong>Patient ID</strong> will be generated (e.g., PAT-1001)</li>
-            <li>Enter this ID on the <strong>Pi5 Stethoscope</strong> before scanning</li>
-            <li>After scanning, the diagnosis will be linked to this patient record</li>
-            <li>Scan the <strong>QR code</strong> with your phone to sync the report</li>
-        </ol>
-    </div>
+    <aside class="lg:pt-[118px]" data-reveal>
+        <div class="card card-pad">
+            <h2 class="card-title"><i class="fas fa-route"></i>What happens next</h2>
+            <ol class="steps mt-5 grid gap-5 text-sm">
+                <li><b>Record on the device.</b> The Pi 5 stethoscope analyses the heart sound offline.</li>
+                <li><b>Scan its QR here.</b> The result is signed by the device, so it cannot be edited on the way.</li>
+                <li><b>Save to this patient.</b> Use the same name and contact you enter now.</li>
+            </ol>
+            <a href="{{ url_for('qr_scanner') }}" class="btn btn-secondary btn-sm mt-6 w-full"><i class="fas fa-qrcode"></i> Open the QR scanner</a>
+        </div>
+    </aside>
 </div>
+<style>
+    .steps { counter-reset: s; }
+    .steps li { position: relative; padding-inline-start: 40px; color: rgb(var(--fg-2)); }
+    .steps li b { display: block; color: rgb(var(--fg)); font-weight: 600; margin-bottom: 2px; }
+    .steps li::before { counter-increment: s; content: counter(s); position: absolute; inset-inline-start: 0; top: 0; width: 26px; height: 26px; border-radius: 99px;
+        display: grid; place-items: center; font-size: 12px; font-weight: 600; background: rgb(var(--brand-50)); color: rgb(var(--brand-700)); border: 1px solid rgb(var(--brand-200)); }
+    .steps li:not(:last-child)::after { content: ""; position: absolute; inset-inline-start: 12.5px; top: 30px; bottom: -18px; width: 1px; background: rgb(var(--line)); }
+</style>
 {% endblock %}
