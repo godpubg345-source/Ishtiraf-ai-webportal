@@ -11,6 +11,10 @@ output and is meant for evaluation only.
 
 Before the heart model runs, the signal quality gate (P1.2, `quality_v2.tflite` + its decision
 file, next to the heart model) checks the recording; a poor one gives NO RESULT: record again.
+
+A6: `score_session` gives one result per child from several recordings (locations AV, PV, TV,
+MV, ...), using `<model>.patient_decision.json` (`ishtiraf_core.patient`). That file is optional:
+without it `score` works as before and only `score_session` returns NO RESULT.
 """
 from __future__ import annotations
 
@@ -20,6 +24,7 @@ from pathlib import Path
 import numpy as np
 
 from . import decision as dc
+from . import patient as pt
 from . import preprocessing as pp
 from . import quality as qa
 
@@ -62,8 +67,24 @@ class HeartResult:
         return None if self.prob is None else round(self.prob * 100)
 
 
+@dataclass(frozen=True)
+class SessionResult:
+    status: str                    # NORMAL / ABNORMAL / UNSURE / NO RESULT for the child
+    decision: str | None           # REFER / UNSURE / NO REFER / NO RESULT from the patient decision file
+    score: float | None            # combined score of the usable recordings (not calibrated)
+    recordings: tuple = ()         # (location, HeartResult) per recording, in the order given
+    locations_used: tuple = ()
+    missing_locations: tuple = ()  # expected locations with no usable recording: record these
+    reason: str = ''
+    rule: str | None = None
+
+
+_SESSION_STATUS = {pt.REFER: ABNORMAL, pt.UNSURE: UNSURE, pt.NO_REFER: NORMAL, pt.NO_RESULT: NO_RESULT}
+
+
 class HeartEngine:
-    def __init__(self, model_path, threshold: float | None = None, decision_path=None, quality_model=None):
+    def __init__(self, model_path, threshold: float | None = None, decision_path=None, quality_model=None,
+                 patient_decision_path=None):
         self.model_path = Path(model_path)
         self.threshold = threshold
         self.decision: dc.Decision | None = None
@@ -93,6 +114,18 @@ class HeartEngine:
                 raise ValueError(f"model input {tuple(self._in['shape'])} does not match {pp.SPEC_SHAPE}")
         except Exception as e:  # keep the device usable, but never fake a result
             self._interp, self.error = None, f'{type(e).__name__}: {e}'
+        self.patient: pt.PatientDecision | None = None
+        self.patient_error = None
+        try:  # optional: a missing or wrong file only disables score_session
+            ppath = Path(patient_decision_path) if patient_decision_path else self.model_path.with_name(
+                f'{self.model_path.stem}.patient_decision.json')
+            if not ppath.exists():
+                raise FileNotFoundError(f'patient decision file not found: {ppath.name}')
+            patient = pt.PatientDecision.load(ppath)
+            patient.check_model(self.model_path)
+            self.patient = patient
+        except Exception as e:
+            self.patient_error = f'{type(e).__name__}: {e}'
 
     @property
     def available(self) -> bool:
@@ -124,3 +157,16 @@ class HeartEngine:
             return HeartResult(ABNORMAL if prob > self.threshold else NORMAL, prob, len(probs))
         d = self.decision.classify(prob)
         return HeartResult(_STATUS[d], prob, len(probs), decision=d, quality=q)
+
+    def score_session(self, recordings) -> SessionResult:
+        """One result for a child. `recordings`: iterable of (audio, sr, location); location may be
+        None. Each recording goes through `score` (quality gate included); recordings that give NO
+        RESULT are left out of the child decision but returned in `recordings`."""
+        if not self.available:
+            return SessionResult(NO_RESULT, None, None, reason=f'AI model not loaded ({self.error})')
+        if self.patient is None:
+            return SessionResult(NO_RESULT, None, None, reason=f'patient decision not loaded ({self.patient_error})')
+        scored = tuple((location, self.score(audio, sr)) for audio, sr, location in recordings)
+        res = self.patient.decide([pt.Recording(r.prob, r.status != NO_RESULT, location) for location, r in scored])
+        return SessionResult(_SESSION_STATUS[res.decision], res.decision, res.score, scored, res.locations_used,
+                             res.missing_locations, res.reason, self.patient.rule)
