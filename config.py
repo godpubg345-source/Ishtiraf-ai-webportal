@@ -24,10 +24,6 @@ class Config:
     # Session
     PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
     
-    # Encryption key path
-    ENCRYPTION_KEY_PATH = os.environ.get('ENCRYPTION_KEY_PATH') or \
-        os.path.join(BASE_DIR, '..', 'Model_Training', '2_App_Core', 'secret.key')
-    
     # Mail (Optional)
     MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
     MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
