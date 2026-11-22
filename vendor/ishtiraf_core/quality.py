@@ -20,9 +20,22 @@ import numpy as np
 from . import preprocessing as pp
 
 OK, POOR_QUALITY, TOO_SHORT, INVALID_AUDIO = '', 'poor_quality', 'too_short', 'invalid_audio'
+CLIPPED = 'clipped'
+# Share of samples within 2 % of the peak. All 6403 PhysioNet + CirCor recordings: at most 9.8 %
+# (a0314, partly saturated but scorable; 99 % of them below 2 %). Mildest synthetic clipping
+# (25 % of samples at the rail): >= 25 %.
+MAX_RAIL_FRACTION = 0.10
+RAIL_TOLERANCE = 0.98
 _REQUIRED = ('version', 'model_sha256', 'window_cutoff', 'min_good_fraction', 'min_full_windows')
 
 Scorer = Callable[[np.ndarray], np.ndarray]  # (n, 65, 155, 1) -> (n,) P(good)
+
+
+def rail_fraction(x) -> float:
+    """Share of samples at the signal's own peak level (1.0 for silence): saturation shows as a plateau."""
+    a = np.abs(np.asarray(x, dtype=np.float64))
+    peak = a.max() if a.size else 0.0
+    return float(np.mean(a >= RAIL_TOLERANCE * peak)) if peak > 0 else 1.0
 
 
 @dataclass(frozen=True)
@@ -136,6 +149,8 @@ class QualityChecker:
         x = np.asarray(audio, dtype=np.float64)
         if x.size == 0 or not np.all(np.isfinite(x)):
             return QualityResult(False, 0.0, INVALID_AUDIO, ())
+        if np.any(x) and rail_fraction(x) > MAX_RAIL_FRACTION:  # saturated mic (silence is left to the model)
+            return QualityResult(False, 0.0, CLIPPED, ())
         batch, n_full = features(x, sr)
         scores = np.asarray(self.scorer(batch[:n_full]), dtype=np.float64) if n_full else ()
         return decide(scores, self.decision)
@@ -149,11 +164,11 @@ def default_model_path() -> Path:
     env = os.environ.get('ISHTIRAF_QUALITY_MODEL')
     if env:
         return Path(env)
-    return Path(__file__).resolve().parents[3] / 'Model_Training' / '1_AI_Engine' / 'Saved_Models' / 'quality_v1.tflite'
+    return Path(__file__).resolve().parents[3] / 'Model_Training' / '1_AI_Engine' / 'Saved_Models' / 'quality_v2.tflite'
 
 
 def assess(audio, sr: int, checker: QualityChecker | None = None) -> QualityResult:
-    """Assess with the given checker, or the default quality_v1 model (env ISHTIRAF_QUALITY_MODEL)."""
+    """Assess with the given checker, or the default quality_v2 model (env ISHTIRAF_QUALITY_MODEL)."""
     global _default
     if checker is None:
         if _default is None:

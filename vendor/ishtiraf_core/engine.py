@@ -9,7 +9,7 @@ Cut-offs come from `<model>.decision.json` (P1.5), which is tied to the model by
 REFER (ABNORMAL) / UNSURE / NO REFER (NORMAL). A fixed `threshold=` gives the old two-way
 output and is meant for evaluation only.
 
-Before the heart model runs, the signal quality gate (P1.2, `quality_v1.tflite` + its decision
+Before the heart model runs, the signal quality gate (P1.2, `quality_v2.tflite` + its decision
 file, next to the heart model) checks the recording; a poor one gives NO RESULT: record again.
 """
 from __future__ import annotations
@@ -27,7 +27,7 @@ MODEL_VERSION = 'heart_attention_v5'  # default shipped model; an engine reports
 NORMAL, ABNORMAL, UNSURE, NO_RESULT = 'NORMAL', 'ABNORMAL', 'UNSURE', 'NO RESULT'
 _STATUS = {dc.REFER: ABNORMAL, dc.UNSURE: UNSURE, dc.NO_REFER: NORMAL}
 MIN_SECONDS = 2  # below this the recording holds too little of a cardiac cycle
-QUALITY_MODEL = 'quality_v1.tflite'
+QUALITY_MODEL = 'quality_v2.tflite'
 POOR_QUALITY_REASON = 'poor recording quality - record again'
 
 
