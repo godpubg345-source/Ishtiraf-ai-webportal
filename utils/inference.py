@@ -15,7 +15,7 @@ sys.path.insert(0, str(_PORTAL / 'vendor'))
 from ishtiraf_core.engine import ABNORMAL, NO_RESULT, NORMAL, HeartEngine  # noqa: E402,F401
 
 logger = logging.getLogger('IshtirafAI.Inference')
-MODEL_PATH = Path(os.environ.get('HEART_MODEL_PATH', _PORTAL / 'ai_models' / 'heart_attention_v4.tflite'))
+MODEL_PATH = Path(os.environ.get('HEART_MODEL_PATH', _PORTAL / 'ai_models' / 'heart_attention_v5.tflite'))
 _engine = None
 
 

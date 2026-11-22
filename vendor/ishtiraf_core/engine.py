@@ -23,7 +23,7 @@ from . import decision as dc
 from . import preprocessing as pp
 from . import quality as qa
 
-MODEL_VERSION = 'heart_attention_v4'
+MODEL_VERSION = 'heart_attention_v5'  # default shipped model; an engine reports the file it loaded
 NORMAL, ABNORMAL, UNSURE, NO_RESULT = 'NORMAL', 'ABNORMAL', 'UNSURE', 'NO RESULT'
 _STATUS = {dc.REFER: ABNORMAL, dc.UNSURE: UNSURE, dc.NO_REFER: NORMAL}
 MIN_SECONDS = 2  # below this the recording holds too little of a cardiac cycle
@@ -68,7 +68,7 @@ class HeartEngine:
         self.threshold = threshold
         self.decision: dc.Decision | None = None
         self.quality: qa.QualityChecker | None = None
-        self.version = MODEL_VERSION
+        self.version = self.model_path.stem
         self.error = None
         self._interp = None
         try:

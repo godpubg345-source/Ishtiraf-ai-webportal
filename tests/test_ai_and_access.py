@@ -63,7 +63,7 @@ def test_portal_score_equals_core_engine_and_pi(authenticated_client, name):
     resp = authenticated_client.post('/api/analyze-audio', json={'audio': _b64(audio32), 'sample_rate': sr})
     assert resp.status_code == 200, resp.get_json()
     data = resp.get_json()['data']
-    ref = HeartEngine(REPO / 'Model_Training' / '1_AI_Engine' / 'Saved_Models' / 'heart_attention_v4.tflite').score(audio32, sr)
+    ref = HeartEngine(REPO / 'Model_Training' / '1_AI_Engine' / 'Saved_Models' / 'heart_attention_v5.tflite').score(audio32, sr)
     assert data['status'] == ref.status
     assert data['probability'] == pytest.approx(ref.prob, abs=1e-6)
     assert data['score'] == ref.score
