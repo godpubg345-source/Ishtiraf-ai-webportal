@@ -1,238 +1,144 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% import "partials/ui.html" as ui with context %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diagnostic Report - IshtirafAI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern_light.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .gradient-text {
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+{% block title %}Device result · IshtirafAI{% endblock %}
+{% block crumbs %}<a href="{{ url_for('qr_scanner') }}" class="hover:text-gray-900">Scan device QR</a><i class="fas fa-chevron-right text-[10px] text-gray-400"></i><b>Result</b>{% endblock %}
 
-        .hud-grid {
-            background-image: linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
-            background-size: 20px 20px;
-        }
-    </style>
-</head>
-
-<body class="bg-gray-50 min-h-screen font-sans">
-
-    <!-- Top Nav -->
-    <nav class="bg-white shadow-sm border-b border-gray-100">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <span class="text-2xl font-bold gradient-text">IshtirafAI</span>
-                    <span class="ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800">PRO</span>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-500"><i class="far fa-clock mr-1"></i> {{ diagnosis.timestamp
-                        }}</span>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        <!-- Header Banner -->
-        <div
-            class="bg-white rounded-2xl shadow-lg p-6 mb-6 border-l-4 {{ 'border-green-500' if diagnosis.status == 'NORMAL' else 'border-red-500' }}">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-900 mb-1">{{ diagnosis.diagnosis }}</h1>
-                    <div class="flex items-center gap-3 mt-2">
-                        <span
-                            class="px-3 py-1 rounded-full text-sm font-semibold {{ 'bg-green-100 text-green-700' if diagnosis.status == 'NORMAL' else 'bg-red-100 text-red-700' }}">
-                            {{ diagnosis.status }}
-                        </span>
-                        {% if diagnosis.organ %}
-                        <span class="px-3 py-1 rounded-full text-sm font-semibold bg-blue-50 text-blue-700">
-                            <i class="fas fa-lungs-virus mr-1"></i> {{ diagnosis.organ }}
-                        </span>
-                        {% endif %}
-                        <span class="text-gray-500 text-sm flex items-center">
-                            <i class="fas fa-microchip mr-1"></i> Device: {{ diagnosis.device_id }}
-                        </span>
+{% block content %}
+{% set k = ui.status_key(diagnosis.status)|trim %}
+<div class="grid gap-6 lg:grid-cols-12">
+    <div class="grid content-start gap-6 lg:col-span-8">
+        <!-- Result hero -->
+        <section class="card result-hero tone-{{ k }} overflow-hidden" aria-labelledby="resultTitle">
+            <div class="hero-wash" aria-hidden="true"></div>
+            <div class="relative flex flex-col gap-6 p-6 sm:p-8 md:flex-row md:items-center md:justify-between">
+                <div class="min-w-0">
+                    <div class="reveal-1 flex flex-wrap items-center gap-2">
+                        {{ ui.status_badge(diagnosis.status, 'status-lg') }}
+                        {% if diagnosis.organ %}<span class="badge"><i class="fas fa-heart-pulse text-[11px]"></i>{{ diagnosis.organ }}</span>{% endif %}
+                        <span class="badge text-clear-700"><i class="fas fa-shield-halved text-[11px]"></i>Signed by device</span>
                     </div>
+                    <h1 id="resultTitle" class="reveal-2 sentence display mt-4 text-[34px] leading-tight sm:text-[44px]">{{ diagnosis.diagnosis }}</h1>
+                    <p class="reveal-3 mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
+                        <span class="inline-flex items-center gap-1.5"><i class="far fa-clock"></i><span class="num">{{ diagnosis.timestamp }}</span></span>
+                        <span class="inline-flex items-center gap-1.5"><i class="fas fa-microchip"></i><span class="mono">{{ diagnosis.device_id }}</span></span>
+                    </p>
                 </div>
-                <div class="mt-4 md:mt-0 text-right">
-                    <div class="text-sm text-gray-500 uppercase tracking-wide font-semibold">AI Score</div>
-                    <div
-                        class="text-4xl font-bold {{ 'text-red-500' if diagnosis.status == 'ABNORMAL' else ('text-green-500' if diagnosis.status == 'NORMAL' else 'text-gray-400') }}">
-                        {{ diagnosis.score if diagnosis.score is not none else '--' }}<span class="text-xl text-gray-400">/100</span>
+                <div class="reveal-2 score-ring shrink-0" style="--score: {{ diagnosis.score if diagnosis.score is not none else 0 }}">
+                    <svg viewBox="0 0 120 120" aria-hidden="true">
+                        <circle cx="60" cy="60" r="52" class="track"/>
+                        <circle cx="60" cy="60" r="52" class="arc" pathLength="100"/>
+                    </svg>
+                    <div class="absolute inset-0 grid place-content-center text-center">
+                        <span class="display num text-[40px] leading-none tone-text" {% if diagnosis.score is not none %}data-count="{{ diagnosis.score }}"{% endif %}>{{ diagnosis.score if diagnosis.score is not none else '--' }}</span>
+                        <span class="mt-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">AI score / 100</span>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-            <!-- LEFT COLUMN: Detailed Findings -->
-            <!-- LEFT COLUMN: AI & Acoustic Analysis -->
-            <div class="lg:col-span-2 space-y-6">
-
-                <!-- 1. Generative AI Assessment -->
-                <div
-                    class="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-1 border border-indigo-100 shadow-sm relative overflow-hidden">
-                    <div
-                        class="absolute top-0 right-0 w-32 h-32 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob">
-                    </div>
-
-                    <div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 relative z-10">
-                        <h3 class="font-bold text-indigo-900 text-lg mb-3 flex items-center">
-                            <i class="fas fa-robot mr-2 text-indigo-600"></i> AI Screening Result
-                        </h3>
-                        <div class="prose prose-blue text-gray-700">
-                            <p class="leading-relaxed">
-                                {{ diagnosis.ai_explanation or "AI analysis processing complete. No specific patterns
-                                identified beyond standard parameters." }}
-                            </p>
-                        </div>
-                        <div class="mt-4 flex items-center gap-2 text-xs font-medium text-indigo-500">
-                            <i class="fas fa-check-circle"></i> Verified by IshtirafAI Neural Engine v3.3
-                        </div>
-                    </div>
+            <div class="relative grid gap-px border-t border-gray-200 bg-gray-200 sm:grid-cols-2">
+                <div class="bg-white p-6">
+                    <p class="eyebrow mb-2">What the model reported</p>
+                    <p class="text-[15px] leading-relaxed text-gray-700">{{ diagnosis.ai_explanation or 'No explanation available for this result.' }}</p>
                 </div>
-
-                <!-- 2. Acoustic Signal Analysis (The "Sound Data") -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                        <h3 class="font-bold text-gray-800">
-                            <i class="fas fa-wave-square mr-2 text-blue-500"></i> Result Details
-                        </h3>
-                        <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Signed by device</span>
-                    </div>
-
-                    <div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {% if diagnosis.advanced_metrics %}
-                        {% for key, value in diagnosis.advanced_metrics.items() %}
-                        <div class="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
-                            <div class="text-xs text-gray-500 uppercase tracking-wider mb-1 truncate">{{ key }}</div>
-                            <div class="font-bold text-gray-900 text-sm md:text-base break-words">{{ value }}</div>
-                        </div>
-                        {% endfor %}
-                        {% else %}
-                        <div class="col-span-4 text-center text-gray-400 italic py-4">No acoustic metrics available in
-                            this scan.</div>
-                        {% endif %}
-                    </div>
+                <div class="tone-bg-soft p-6">
+                    <p class="eyebrow mb-2">Next step</p>
+                    <p class="text-[15px] font-semibold leading-relaxed text-gray-900">{{ diagnosis.recommendation }}</p>
                 </div>
-
-                <!-- 3. Expert Recommendations -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="bg-blue-50 px-6 py-4 border-b border-blue-100">
-                        <h3 class="font-bold text-blue-900">
-                            <i class="fas fa-user-md mr-2"></i> Clinical Advice & Next Steps
-                        </h3>
-                    </div>
-                    <div class="p-6">
-                        <ul class="space-y-4">
-                            {% if diagnosis.ai_advice %}
-                            {% for tip in diagnosis.ai_advice %}
-                            <li class="flex items-start">
-                                <div
-                                    class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-3 mt-1">
-                                    <i class="fas fa-arrow-right text-sm"></i>
-                                </div>
-                                <p class="text-gray-700 leading-relaxed">{{ tip }}</p>
-                            </li>
-                            {% endfor %}
-                            {% else %}
-                            <li class="text-gray-500 italic">No specific advice generated.</li>
-                            {% endif %}
-                        </ul>
-
-                        <div class="mt-6 pt-6 border-t border-gray-100">
-                            <p class="text-sm font-semibold text-gray-900 mb-2">Primary Recommendation:</p>
-                            <div
-                                class="bg-red-50 text-red-700 px-4 py-3 rounded-lg border border-red-100 flex items-center">
-                                <i class="fas fa-exclamation-triangle mr-3"></i>
-                                {{ diagnosis.recommendation }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
+        </section>
 
-            <!-- RIGHT COLUMN: Patient Form & Actions -->
-            <div class="space-y-6">
-
-                <!-- Patient Form -->
-                <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-                    <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
-                        <h3 class="font-bold text-white"><i class="fas fa-user-plus mr-2"></i> Save Record</h3>
-                    </div>
-                    <div class="p-6">
-                        {% if diagnosis.status == 'NO RESULT' %}
-                        <p class="text-gray-600">No result to save. Record again on the device.</p>
-                        {% else %}
-                        <form action="{{ url_for('save_from_qr') }}" method="POST" class="space-y-4">
-                            <input type="hidden" name="payload" value="{{ payload }}">
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
-                                <input type="text" name="name" required
-                                    class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm"
-                                    placeholder="Full Name">
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Age</label>
-                                    <input type="number" name="age" required
-                                        class="w-full rounded-lg border-gray-300 shadow-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                                    <select name="gender" required class="w-full rounded-lg border-gray-300 shadow-sm">
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <input type="tel" name="contact" placeholder="Contact Number (Optional)"
-                                class="w-full rounded-lg border-gray-300 shadow-sm">
-
-                            <button type="submit"
-                                class="w-full bg-gray-900 text-white py-3 rounded-lg font-bold hover:bg-gray-800 transition shadow-lg transform hover:-translate-y-0.5">
-                                Save to Database
-                            </button>
-                        </form>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="grid grid-cols-2 gap-3">
-                    <button onclick="window.print()"
-                        class="bg-white border border-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-50">
-                        <i class="fas fa-print mr-2"></i> Print
-                    </button>
-                    <a href="{{ url_for('qr_scanner') }}"
-                        class="bg-white border border-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-50 text-center flex items-center justify-center">
-                        <i class="fas fa-qrcode mr-2"></i> Scan New
-                    </a>
-                </div>
-
+        <!-- Facts -->
+        <section class="card" data-reveal aria-labelledby="factsTitle">
+            <div class="card-head">
+                <h2 id="factsTitle" class="card-title"><i class="fas fa-wave-square"></i>Result details</h2>
+                <span class="status status--clear"><i class="fas fa-check text-[10px]"></i>Verified</span>
             </div>
-        </div>
+            <div class="card-pad">
+                {% if diagnosis.advanced_metrics %}
+                <dl class="kv">
+                    {% for key, value in diagnosis.advanced_metrics.items() %}
+                    <div><dt>{{ key }}</dt><dd class="{{ 'mono text-[13px]' if key in ['Device', 'Model', 'Decision rule'] }}">{{ value if value is not none else '—' }}</dd></div>
+                    {% endfor %}
+                </dl>
+                {% else %}
+                <p class="text-sm text-gray-500">No details in this result.</p>
+                {% endif %}
+            </div>
+        </section>
 
-        <p class="text-center text-gray-400 text-xs mt-12">IshtirafAI V3.0 Diagnostic Engine • Medical Grade Analysis
-        </p>
+        {% if diagnosis.ai_advice %}
+        <section class="card card-pad" data-reveal aria-labelledby="readTitle">
+            <h2 id="readTitle" class="card-title"><i class="fas fa-circle-info"></i>Before you act on this</h2>
+            <ul class="mt-4 grid gap-3">
+                {% for tip in diagnosis.ai_advice %}
+                <li class="flex gap-3 text-sm leading-relaxed text-gray-700"><i class="fas fa-minus mt-1.5 text-[10px] text-gray-400"></i>{{ tip }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
     </div>
-</body>
 
-</html>
+    <!-- Save -->
+    <aside class="grid content-start gap-4 lg:col-span-4">
+        <section class="card overflow-hidden lg:sticky lg:top-20" data-reveal aria-labelledby="saveTitle">
+            <div class="card-head"><h2 id="saveTitle" class="card-title"><i class="fas fa-user-plus"></i>Save to a patient</h2></div>
+            <div class="card-pad">
+                {% if diagnosis.status == 'NO RESULT' %}
+                <div class="empty-state !p-4"><i class="fas fa-rotate-left"></i><p class="title">Nothing to save</p><p class="text-sm">No result to save. Record again on the device.</p></div>
+                {% else %}
+                <form action="{{ url_for('save_from_qr') }}" method="POST" class="grid gap-4">
+                    <input type="hidden" name="payload" value="{{ payload }}">
+                    <div>
+                        <label for="p_name" class="mb-1.5 block text-sm font-medium">Patient name</label>
+                        <input id="p_name" type="text" name="name" required placeholder="Full name" autocomplete="off">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="p_age" class="mb-1.5 block text-sm font-medium">Age</label>
+                            <input id="p_age" type="number" name="age" required min="0" max="120" inputmode="numeric">
+                        </div>
+                        <div>
+                            <label for="p_gender" class="mb-1.5 block text-sm font-medium">Gender</label>
+                            <select id="p_gender" name="gender" required>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="p_contact" class="mb-1.5 block text-sm font-medium">Contact <span class="font-normal text-gray-400">(optional)</span></label>
+                        <input id="p_contact" type="tel" name="contact" placeholder="0300-1234567" inputmode="tel">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg btn-block mt-1" data-loading>
+                        <span class="spinner" aria-hidden="true"></span><i class="fas fa-floppy-disk text-sm"></i><span>Save to Database</span>
+                    </button>
+                    <p class="text-xs text-gray-500">An existing patient with the same name and contact gets this result added.</p>
+                </form>
+                {% endif %}
+            </div>
+        </section>
+        <div class="grid grid-cols-2 gap-3 no-print">
+            <button onclick="window.print()" class="btn btn-secondary"><i class="fas fa-print"></i> Print</button>
+            <a href="{{ url_for('qr_scanner') }}" class="btn btn-secondary"><i class="fas fa-qrcode"></i> Scan new</a>
+        </div>
+    </aside>
+</div>
+
+<style>
+    .result-hero { position: relative; }
+    .hero-wash { position: absolute; inset: 0; background: radial-gradient(120% 90% at 100% 0%, rgb(var(--tone) / .12), transparent 60%); }
+    .tone-bg-soft { background: rgb(var(--tone-soft)); }
+    .score-ring { position: relative; width: 148px; height: 148px; }
+    .score-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .score-ring circle { fill: none; stroke-width: 8; }
+    .score-ring .track { stroke: rgb(var(--g-200)); }
+    .score-ring .arc { stroke: rgb(var(--tone)); stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: calc(100 - var(--score));
+        animation: ring 1.3s var(--ease-out) .25s both; }
+    @keyframes ring { from { stroke-dashoffset: 100; } }
+    .reveal-1, .reveal-2, .reveal-3 { animation: rise 700ms var(--ease-out) both; }
+    .reveal-2 { animation-delay: 120ms; } .reveal-3 { animation-delay: 220ms; }
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+    .result-hero.tone-refer .status-lg { animation: pop-in 600ms var(--ease-out) both, alert-glow 2.4s var(--ease-in-out) 700ms 2; }
+    @keyframes alert-glow { 50% { box-shadow: 0 0 0 6px rgb(var(--refer-500) / .15); } }
+</style>
+{% endblock %}

@@ -1,3 +1,4 @@
+{% set inline_flashes = true %}
 {% extends "base.html" %}
 
 {% block title %}Setup 2FA - IshtirafAI{% endblock %}
@@ -7,7 +8,7 @@
     <a href="{{ url_for('settings.security') }}" class="text-gray-400 hover:text-white mb-4 inline-block">
         <i class="fas fa-arrow-left mr-2"></i>Back to Security
     </a>
-    <h2 class="text-3xl font-bold text-white">Setup Two-Factor Authentication</h2>
+    <h2 class="text-3xl font-bold text-gray-900">Setup Two-Factor Authentication</h2>
     <p class="text-gray-400 mt-1">Add an extra layer of security to your account</p>
 </div>
 
@@ -29,7 +30,7 @@
 <div class="glass p-8 rounded-xl max-w-xl">
     <!-- Step 1: QR Code -->
     <div class="mb-8">
-        <h3 class="text-xl font-bold text-white mb-4">
+        <h3 class="text-xl font-bold text-gray-900 mb-4">
             <span class="bg-purple-600 text-white px-3 py-1 rounded-full text-sm mr-2">1</span>
             Scan QR Code
         </h3>
@@ -44,7 +45,7 @@
     <!-- Manual Entry -->
     <div class="mb-8">
         <h4 class="text-gray-400 text-sm mb-2">Or enter this code manually:</h4>
-        <div class="bg-gray-800 p-3 rounded-lg font-mono text-green-400 text-sm flex items-center justify-between">
+        <div class="bg-white p-3 rounded-lg font-mono text-green-400 text-sm flex items-center justify-between">
             <span id="secretCode">{{ secret }}</span>
             <button onclick="copySecret()" class="text-gray-400 hover:text-white">
                 <i class="fas fa-copy"></i>
@@ -54,7 +55,7 @@
 
     <!-- Step 2: Verify -->
     <div>
-        <h3 class="text-xl font-bold text-white mb-4">
+        <h3 class="text-xl font-bold text-gray-900 mb-4">
             <span class="bg-purple-600 text-white px-3 py-1 rounded-full text-sm mr-2">2</span>
             Verify Code
         </h3>
@@ -65,7 +66,7 @@
         <form method="POST" action="{{ url_for('settings.setup_2fa') }}">
             <div class="flex gap-4">
                 <input type="text" name="totp_code" required maxlength="6" pattern="[0-9]{6}" placeholder="000000"
-                    class="w-32 bg-gray-800 border border-gray-600 text-white text-center text-2xl tracking-widest px-4 py-3 rounded-lg focus:outline-none focus:border-purple-500">
+                    class="w-32 bg-white border border-gray-200 text-gray-900 text-center text-2xl tracking-widest px-4 py-3 rounded-lg focus:outline-none focus:border-purple-500">
 
                 <button type="submit"
                     class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-lg font-bold transition">

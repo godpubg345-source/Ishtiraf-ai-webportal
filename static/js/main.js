@@ -129,6 +129,7 @@
     window.IshtirafToast = {
         show: function (message, type) {
             type = type || 'info';
+            if (window.ishtirafToast) { window.ishtirafToast(message, type); return; }
             const toast = document.createElement('div');
             toast.className = 'toast alert alert-' + type + ' animate-fadeIn';
             toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;min-width:300px;';
@@ -152,17 +153,7 @@
     // Animations
     // ============================================
     function initAnimations() {
-        // Fade in cards on load
-        const cards = document.querySelectorAll('.card');
-        cards.forEach(function (card, index) {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            setTimeout(function () {
-                card.style.transition = 'all 0.3s ease';
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, 100 * index);
-        });
+        // Entrance motion now lives in static/js/ui.js ([data-reveal]); nothing to do here.
     }
 
     // ============================================
