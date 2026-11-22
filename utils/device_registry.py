@@ -93,6 +93,28 @@ def advice(d: dict) -> tuple[str, str]:
             'Record again on the device.')
 
 
+STATUS_OF_LABEL = {label: status for status, label in LABEL.items()}
+
+
+def stored_report(diag) -> dict:
+    """Report for a saved Diagnosis row, built only from stored fields (no template text).
+
+    Rows saved from a signed QR carry one of LABEL's texts; anything else predates V2 and
+    gets no model explanation.
+    """
+    status = STATUS_OF_LABEL.get(diag.diagnosis_result or '')
+    score = None if diag.risk_score is None else int(round(diag.risk_score * 10))
+    metrics = {'AI score': '--' if score is None else f'{score}/100', 'Model': diag.path_used or '--',
+               'Device': diag.device_id or '--'}
+    if status is None:
+        return {'explanation': 'This result was saved before V2. No model explanation is available; '
+                               'record again on the device.',
+                'advice': CAVEATS, 'acoustic_metrics': metrics}
+    explanation, recommendation = advice({'status': status, 'model': diag.path_used or 'heart model', 'score': score})
+    return {'explanation': explanation, 'advice': CAVEATS + [diag.recommendation or recommendation],
+            'acoustic_metrics': metrics}
+
+
 def facts(d: dict) -> dict:
     return {'AI score': '--' if d['score'] is None else f"{d['score']}/100", 'Decision rule': f"{d['model']}.decision.json",
             'Windows analysed': d['n_windows'], 'Model': d['model'], 'Location': d['location'],

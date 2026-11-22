@@ -33,7 +33,6 @@ from routes.reports import reports_bp
 # Enterprise Features
 from utils.rbac import require_permission, require_role, rbac_context_processor
 from utils.audit import log_audit, init_audit_logging, audit_action
-from utils.ai_expert import AIExpertSystem
 from utils import device_registry
 from markupsafe import escape
 from utils.notifications import init_notifications, notifications
