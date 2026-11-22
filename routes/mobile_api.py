@@ -325,19 +325,12 @@ def list_diagnoses():
 @mobile_api.route('/diagnoses/<int:diagnosis_id>', methods=['GET'])
 @token_required
 def get_diagnosis(diagnosis_id):
-    """Get diagnosis with AI report"""
-    from utils.ai_expert import AIExpertSystem
-    
+    """Get a saved diagnosis. The report text comes only from what was stored; nothing is invented."""
+    from utils import device_registry
+
     diagnosis = Diagnosis.query.get_or_404(diagnosis_id)
-    
-    # Generate AI report
-    ai_report = AIExpertSystem.generate_report(
-        diagnosis.diagnosis_result or 'Unknown',
-        'A' if diagnosis.risk_score >= 5 else 'N',
-        diagnosis.risk_score or 0,
-        diagnosis.organ_mode or 'Heart'
-    )
-    
+    ai_report = device_registry.stored_report(diagnosis)
+
     return jsonify({
         'id': diagnosis.id,
         'diagnosis_id': diagnosis.diagnosis_id,

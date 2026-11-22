@@ -37,102 +37,61 @@ def generate_fhir_patient(patient) -> Dict[str, Any]:
     }
 
 
+SCREEN_CS = "https://ishtiraf.ai/fhir/CodeSystem/screening"          # placeholder URL (spec section 4)
+RESULT_CS = "https://ishtiraf.ai/fhir/CodeSystem/screening-result"
+RESULT_CODES = {  # device status -> spec valueCodeableConcept
+    "ABNORMAL": ("refer", "Refer for echo"),
+    "UNSURE": ("unsure", "Unsure: re-record or refer"),
+    "NORMAL": ("no-referral", "No referral by sound"),
+}
+SCREEN_NOTE = "Screening aid only - not a diagnosis. Refer anyway if symptoms or clinical concern."
+
+
 def generate_fhir_observation(diagnosis, patient) -> Dict[str, Any]:
-    """Generate FHIR R4 Observation resource for diagnosis."""
-    
-    # Map diagnosis to SNOMED CT codes
-    snomed_codes = {
-        "Normal": {"code": "17621005", "display": "Normal heart sounds"},
-        "Aortic Stenosis": {"code": "60573004", "display": "Aortic valve stenosis"},
-        "Mitral Regurgitation": {"code": "48724000", "display": "Mitral valve regurgitation"},
-        "Abnormal": {"code": "271807003", "display": "Abnormal heart sound"},
-        "Crackles": {"code": "48409008", "display": "Crackles"},
-        "Wheeze": {"code": "56018004", "display": "Wheezing"},
-    }
-    
-    # Find matching code or default
-    code_info = {"code": "271807003", "display": "Abnormal finding"}
-    for key, value in snomed_codes.items():
-        if key.lower() in (diagnosis.diagnosis_result or "").lower():
-            code_info = value
-            break
-    
-    return {
+    """FHIR R4 screening Observation, per docs/specs/FHIR_export.md section 4.
+
+    Only stored facts are exported: a local code (no invented SNOMED/LOINC code), the
+    referral decision as valueCodeableConcept, the AI score 0-100, and no
+    `interpretation` (H/L/A would read as a diagnosis). Rows whose text is not one of the
+    device labels (pre-V2 data) and NO RESULT get no value and a dataAbsentReason.
+    """
+    from utils.device_registry import STATUS_OF_LABEL
+
+    status = STATUS_OF_LABEL.get(diagnosis.diagnosis_result or "")
+    obs = {
         "resourceType": "Observation",
         "id": f"obs-{diagnosis.id}",
-        "meta": {
-            "profile": ["http://hl7.org/fhir/StructureDefinition/Observation"]
-        },
         "status": "final",
-        "category": [{
-            "coding": [{
-                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
-                "code": "exam",
-                "display": "Exam"
-            }]
-        }],
-        "code": {
-            "coding": [{
-                "system": "http://snomed.info/sct",
-                "code": code_info["code"],
-                "display": code_info["display"]
-            }],
-            "text": diagnosis.diagnosis_result
-        },
-        "subject": {
-            "reference": f"Patient/patient-{patient.id}",
-            "display": patient.name
-        },
+        "category": [{"coding": [{
+            "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+            "code": "exam", "display": "Exam"}]}],
+        "code": {"coding": [{"system": SCREEN_CS, "code": "ishtiraf-heart-sound-referral-screen",
+                             "display": "AI heart-sound referral screen"}],
+                 "text": "AI heart-sound referral screen"},
+        "subject": {"reference": f"Patient/patient-{patient.id}", "display": patient.name},
         "effectiveDateTime": diagnosis.timestamp.isoformat() if diagnosis.timestamp else None,
         "issued": datetime.utcnow().isoformat() + "Z",
-        "performer": [{
-            "display": "IshtirafAI Diagnostic System"
-        }],
-        "device": {
-            "display": diagnosis.device_id or "IshtirafAI-Steth"
-        },
-        "interpretation": [{
-            "coding": [{
-                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
-                "code": "N" if "normal" in (diagnosis.diagnosis_result or "").lower() else "A",
-                "display": "Normal" if "normal" in (diagnosis.diagnosis_result or "").lower() else "Abnormal"
-            }]
-        }],
-        "component": [
-            {
-                "code": {
-                    "coding": [{
-                        "system": "http://ishtirafai.local/codes",
-                        "code": "confidence",
-                        "display": "AI Confidence Score"
-                    }]
-                },
-                "valueQuantity": {
-                    "value": round((diagnosis.confidence or 0) * 100, 2),
-                    "unit": "%",
-                    "system": "http://unitsofmeasure.org",
-                    "code": "%"
-                }
-            },
-            {
-                "code": {
-                    "coding": [{
-                        "system": "http://ishtirafai.local/codes",
-                        "code": "risk-score",
-                        "display": "Risk Score"
-                    }]
-                },
-                "valueQuantity": {
-                    "value": diagnosis.risk_score or 0,
-                    "unit": "score",
-                    "system": "http://unitsofmeasure.org"
-                }
-            }
-        ],
-        "note": [{
-            "text": diagnosis.recommendation or ""
-        }]
+        "device": {"display": diagnosis.device_id or "IshtirafAI-Steth"},
+        "note": [{"text": SCREEN_NOTE}],
     }
+    if status in RESULT_CODES:
+        code, display = RESULT_CODES[status]
+        obs["valueCodeableConcept"] = {"coding": [{"system": RESULT_CS, "code": code, "display": display}],
+                                       "text": diagnosis.diagnosis_result}
+        if diagnosis.risk_score is not None:
+            obs["component"] = [{
+                "code": {"coding": [{"system": SCREEN_CS, "code": "score", "display": "AI screening score (0-100)"}]},
+                "valueQuantity": {"value": int(round(diagnosis.risk_score * 10)), "unit": "{score}",
+                                  "system": "http://unitsofmeasure.org", "code": "{score}"},
+            }]
+        if diagnosis.recommendation:
+            obs["note"].append({"text": diagnosis.recommendation})
+    else:
+        obs["dataAbsentReason"] = {"coding": [{
+            "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
+            "code": "error" if status == "NO RESULT" else "unknown"}],
+            "text": diagnosis.diagnosis_result or "No result"}
+    return obs
 
 
 def generate_fhir_bundle(patient, diagnoses: list) -> Dict[str, Any]:
