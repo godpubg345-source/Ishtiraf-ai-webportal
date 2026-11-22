@@ -132,7 +132,7 @@
         $('result-detail').textContent = detail;
         const meter = $('result-meter');
         if (score != null) {
-            $('result-score').innerHTML = `<p class="eyebrow">AI score</p><p class="mt-1 leading-none"><span class="display num text-[52px] tone-text" id="scoreNum">0</span><span class="text-sm text-gray-400"> / 100</span></p>`;
+            $('result-score').innerHTML = `<p class="eyebrow">AI score</p><p class="mt-1 leading-none"><span class="display num text-[52px] tone-text" id="scoreNum">0</span><span class="text-sm text-gray-400"> / 100</span></p><p class="mt-1 text-xs text-gray-500">Not a probability or confidence</p>`;
             meter.classList.remove('hidden'); meter.firstElementChild.style.width = Math.min(100, score) + '%';
             meter.firstElementChild.style.animation = 'none'; void meter.offsetWidth; meter.firstElementChild.style.animation = '';
             const el = $('scoreNum');
@@ -144,6 +144,7 @@
 
     async function toggleRecording() {
         const btn = $('recordBtn'), wrap = $('recWrap');
+        if (wrap.classList.contains('is-busy')) return;  // still scoring the last recording
         if (!isRecording) {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -161,7 +162,7 @@
                 mediaRecorder.onstop = async () => {
                     cancelAnimationFrame(animationId);
                     stream.getTracks().forEach(track => track.stop());
-                    wrap.classList.add('is-busy'); $('micState').textContent = 'Stopped';
+                    wrap.classList.add('is-busy'); btn.disabled = true; $('micState').textContent = 'Stopped';
                     setBadge($('sigBadge'), 'none', 'Analysing');
                     $('recHint').textContent = 'Scoring the recording…';
                     $('modelState').textContent = 'Scoring…';
@@ -193,7 +194,7 @@
                         showResult({ key: 'none', label: 'NO RESULT' }, 'No result', 'Could not decode the recording: ' + err, null);
                         $('modelState').textContent = 'No result';
                     }
-                    wrap.classList.remove('is-busy'); setBadge($('sigBadge'), 'none', 'Idle');
+                    wrap.classList.remove('is-busy'); btn.disabled = false; setBadge($('sigBadge'), 'none', 'Idle');
                     $('recHint').textContent = 'Press to record again';
                 };
 

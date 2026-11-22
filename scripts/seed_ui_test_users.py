@@ -1,7 +1,7 @@
 """Create local demo accounts for UI checks (demo DB only, never production).
 
-Usage (from the portal folder):
-    PYTHONUTF8=1 python scripts/seed_ui_test_users.py
+Usage (from the portal folder; refuses to run without the demo flag):
+    ISHTIRAF_DEMO_SEED=1 PYTHONUTF8=1 python scripts/seed_ui_test_users.py
 
 Credentials (demo only, local DB):
     doctor: ui.doctor@ishtiraf.test / UiDemo!2026
@@ -10,6 +10,9 @@ Does not touch any existing account (the real admin is left alone).
 """
 import os
 import sys
+
+if os.environ.get('ISHTIRAF_DEMO_SEED') != '1':
+    sys.exit('Refusing: demo accounts with a known password. Set ISHTIRAF_DEMO_SEED=1 on a demo DB only.')
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

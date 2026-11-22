@@ -300,10 +300,10 @@
   /* Mobile drawer */
   .scrim { position: fixed; inset: 0; z-index: 35; background: rgb(0 0 0 / .4); opacity: 0; pointer-events: none; transition: opacity var(--t-slow); }
   @media (max-width: 1023px) {
-    .sidebar { transform: translateX(-100%); box-shadow: var(--shadow-lg); }
+    .sidebar { transform: translateX(-100%); box-shadow: var(--shadow-lg); visibility: hidden; transition: transform var(--t-slow) var(--ease-out), visibility 0s linear var(--t-slow); }
     [dir="rtl"] .sidebar { transform: translateX(100%); }
     .app-main { margin-inline-start: 0; }
-    body.nav-open .sidebar { transform: none; }
+    body.nav-open .sidebar { transform: none; visibility: visible; transition: transform var(--t-slow) var(--ease-out); }
     body.nav-open .scrim { opacity: 1; pointer-events: auto; }
   }
 
@@ -385,6 +385,7 @@
 /* ---------- Print: clean report, no chrome ---------- */
 @media print {
   .sidebar, .topbar, .no-print, .toast-region { display: none !important; }
+  .js [data-reveal] { opacity: 1 !important; transform: none !important; }
   .app-main { margin: 0 !important; }
   body { background: #fff; }
   .card { box-shadow: none; }

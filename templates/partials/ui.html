@@ -39,7 +39,7 @@
 {%- endmacro %}
 
 {% macro initials(name) -%}
-{%- set parts = (name or '?').split() -%}
+{%- set parts = (name or '').split() or ['?'] -%}
 {{ ((parts[0][:1] ~ (parts[-1][:1] if parts|length > 1 else parts[0][1:2]))|upper) }}
 {%- endmacro %}
 

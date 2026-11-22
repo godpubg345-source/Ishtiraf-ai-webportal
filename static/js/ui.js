@@ -32,8 +32,14 @@
     b.classList.toggle('nav-open', willOpen);
     var btn = document.getElementById('navToggle');
     if (btn) btn.setAttribute('aria-expanded', String(willOpen));
+    if (willOpen) {
+      var first = document.querySelector('#sidebar .nav-link');
+      if (first) setTimeout(function () { first.focus(); }, 60);
+    } else if (btn && document.getElementById('sidebar') && document.getElementById('sidebar').contains(document.activeElement)) {
+      btn.focus();
+    }
   };
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') window.toggleNav(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && document.body.classList.contains('nav-open')) window.toggleNav(false); });
 
   /* ---------- Notifications popover ---------- */
   window.toggleNotifications = function () {

@@ -82,3 +82,15 @@ def test_legacy_labels_still_map(app):
     with app.test_request_context():
         out = render_template_string(tpl, items=['NORMAL', 'ABNORMAL', 'NO RESULT', '', None, 'UNSURE: X'])
     assert out == 'clear,refer,none,none,none,unsure,'
+
+
+def test_blank_user_name_does_not_break_the_shell(client):
+    """Review finding: initials() crashed (500 on every page) for a name of only spaces."""
+    from models.user import User
+    with app.app_context():
+        u = User(email='blank@test.com', name='   ', role='doctor')
+        u.set_password('pw123456')
+        db.session.add(u)
+        db.session.commit()
+    client.post('/auth/login', data={'email': 'blank@test.com', 'password': 'pw123456'})
+    assert client.get('/dashboard').status_code == 200
